@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ShellRouteImport } from './routes/_shell'
 import { Route as ShellIndexRouteImport } from './routes/_shell.index'
+import { Route as ShellFinancasRouteImport } from './routes/_shell.financas'
 
 const ShellRoute = ShellRouteImport.update({
   id: '/_shell',
@@ -21,24 +22,32 @@ const ShellIndexRoute = ShellIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ShellRoute,
 } as any)
+const ShellFinancasRoute = ShellFinancasRouteImport.update({
+  id: '/financas',
+  path: '/financas',
+  getParentRoute: () => ShellRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof ShellIndexRoute
+  '/financas': typeof ShellFinancasRoute
 }
 export interface FileRoutesByTo {
+  '/financas': typeof ShellFinancasRoute
   '/': typeof ShellIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_shell': typeof ShellRouteWithChildren
+  '/_shell/financas': typeof ShellFinancasRoute
   '/_shell/': typeof ShellIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/financas'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/_shell' | '/_shell/'
+  to: '/financas' | '/'
+  id: '__root__' | '/_shell' | '/_shell/financas' | '/_shell/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -61,14 +70,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShellIndexRouteImport
       parentRoute: typeof ShellRoute
     }
+    '/_shell/financas': {
+      id: '/_shell/financas'
+      path: '/financas'
+      fullPath: '/financas'
+      preLoaderRoute: typeof ShellFinancasRouteImport
+      parentRoute: typeof ShellRoute
+    }
   }
 }
 
 interface ShellRouteChildren {
+  ShellFinancasRoute: typeof ShellFinancasRoute
   ShellIndexRoute: typeof ShellIndexRoute
 }
 
 const ShellRouteChildren: ShellRouteChildren = {
+  ShellFinancasRoute: ShellFinancasRoute,
   ShellIndexRoute: ShellIndexRoute,
 }
 
