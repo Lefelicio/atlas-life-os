@@ -16,6 +16,7 @@ import { Route as ShellProjetosRouteImport } from './routes/_shell.projetos'
 import { Route as ShellMinhaVidaRouteImport } from './routes/_shell.minha-vida'
 import { Route as ShellMetasRouteImport } from './routes/_shell.metas'
 import { Route as ShellFinancasRouteImport } from './routes/_shell.financas'
+import { Route as ShellConfiguracoesRouteImport } from './routes/_shell.configuracoes'
 import { Route as ShellCartoesRouteImport } from './routes/_shell.cartoes'
 
 const ShellRoute = ShellRouteImport.update({
@@ -52,6 +53,11 @@ const ShellFinancasRoute = ShellFinancasRouteImport.update({
   path: '/financas',
   getParentRoute: () => ShellRoute,
 } as any)
+const ShellConfiguracoesRoute = ShellConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => ShellRoute,
+} as any)
 const ShellCartoesRoute = ShellCartoesRouteImport.update({
   id: '/cartoes',
   path: '/cartoes',
@@ -61,6 +67,7 @@ const ShellCartoesRoute = ShellCartoesRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof ShellIndexRoute
   '/cartoes': typeof ShellCartoesRoute
+  '/configuracoes': typeof ShellConfiguracoesRoute
   '/financas': typeof ShellFinancasRoute
   '/metas': typeof ShellMetasRoute
   '/minha-vida': typeof ShellMinhaVidaRoute
@@ -69,6 +76,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/cartoes': typeof ShellCartoesRoute
+  '/configuracoes': typeof ShellConfiguracoesRoute
   '/financas': typeof ShellFinancasRoute
   '/metas': typeof ShellMetasRoute
   '/minha-vida': typeof ShellMinhaVidaRoute
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_shell': typeof ShellRouteWithChildren
   '/_shell/cartoes': typeof ShellCartoesRoute
+  '/_shell/configuracoes': typeof ShellConfiguracoesRoute
   '/_shell/financas': typeof ShellFinancasRoute
   '/_shell/metas': typeof ShellMetasRoute
   '/_shell/minha-vida': typeof ShellMinhaVidaRoute
@@ -92,6 +101,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/cartoes'
+    | '/configuracoes'
     | '/financas'
     | '/metas'
     | '/minha-vida'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/cartoes'
+    | '/configuracoes'
     | '/financas'
     | '/metas'
     | '/minha-vida'
@@ -110,6 +121,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_shell'
     | '/_shell/cartoes'
+    | '/_shell/configuracoes'
     | '/_shell/financas'
     | '/_shell/metas'
     | '/_shell/minha-vida'
@@ -173,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShellFinancasRouteImport
       parentRoute: typeof ShellRoute
     }
+    '/_shell/configuracoes': {
+      id: '/_shell/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof ShellConfiguracoesRouteImport
+      parentRoute: typeof ShellRoute
+    }
     '/_shell/cartoes': {
       id: '/_shell/cartoes'
       path: '/cartoes'
@@ -185,6 +204,7 @@ declare module '@tanstack/react-router' {
 
 interface ShellRouteChildren {
   ShellCartoesRoute: typeof ShellCartoesRoute
+  ShellConfiguracoesRoute: typeof ShellConfiguracoesRoute
   ShellFinancasRoute: typeof ShellFinancasRoute
   ShellMetasRoute: typeof ShellMetasRoute
   ShellMinhaVidaRoute: typeof ShellMinhaVidaRoute
@@ -195,6 +215,7 @@ interface ShellRouteChildren {
 
 const ShellRouteChildren: ShellRouteChildren = {
   ShellCartoesRoute: ShellCartoesRoute,
+  ShellConfiguracoesRoute: ShellConfiguracoesRoute,
   ShellFinancasRoute: ShellFinancasRoute,
   ShellMetasRoute: ShellMetasRoute,
   ShellMinhaVidaRoute: ShellMinhaVidaRoute,
