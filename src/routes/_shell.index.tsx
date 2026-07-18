@@ -9,9 +9,12 @@ import {
   Wallet,
 } from "lucide-react";
 
-import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Greeting } from "@/components/greeting";
+import { Insight } from "@/components/insight";
+import { EmptyState } from "@/components/empty-state";
+import { StatusCard } from "@/components/status-card";
 import { PlaceholderCard } from "@/components/placeholder-card";
 
 import { useFinance } from "@/features/finance/store";
@@ -24,22 +27,22 @@ import {
   sumIncome,
   totalBalance,
 } from "@/features/finance/utils";
-import { StatCard } from "@/features/finance/components/stat-card";
 import { TransactionsList } from "@/features/finance/components/transactions-list";
 import { TransactionDialog } from "@/features/finance/components/transaction-dialog";
 import {
   ExpenseByCategoryChart,
   MonthlyChart,
 } from "@/features/finance/components/charts";
+import { useDashboardInsight } from "@/features/insights/use-dashboard-insight";
 
 export const Route = createFileRoute("/_shell/")({
   component: DashboardPage,
   head: () => ({
     meta: [
-      { title: "Dashboard — Atlas" },
+      { title: "Central de Comando — Atlas" },
       {
         name: "description",
-        content: "Visão geral da sua evolução financeira, pessoal e profissional.",
+        content: "Sua visão pessoal e inteligente do dia — Atlas Life OS.",
       },
     ],
   }),
@@ -60,49 +63,60 @@ function DashboardPage() {
   const total = totalBalance(accounts, transactions);
   const recent = transactions.slice(0, 6);
 
+  const insight = useDashboardInsight({ accounts, transactions, monthly });
+
+  const hasAccounts = accounts.length > 0;
+  const hasTx = transactions.length > 0;
+  const hasMonthly = monthly.length > 0;
+
   return (
     <div className="space-y-8">
-      <PageHeader
-        eyebrow="Visão geral"
-        title="Bem-vindo ao Atlas"
-        description="Sua central de comando pessoal. Últimos 30 dias em destaque."
-        actions={
-          <Button
-            size="sm"
-            className="gap-1.5"
-            onClick={() => setTxOpen(true)}
-            disabled={accounts.length === 0}
-          >
-            Novo lançamento
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          </Button>
-        }
-      />
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 border-b border-border/60 pb-6">
+        <Greeting />
+        <Button
+          size="lg"
+          onClick={() => setTxOpen(true)}
+          disabled={!hasAccounts}
+          className="gap-1.5 shadow-elegant ring-1 ring-primary/40 hover:ring-primary/60"
+        >
+          <Plus className="h-4 w-4" />
+          Novo lançamento
+          <ArrowUpRight className="h-3.5 w-3.5 opacity-80" />
+        </Button>
+      </div>
+
+      <Insight message={insight} />
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
+        <StatusCard
           label="Saldo total"
-          value={currency(total)}
+          value={hasAccounts ? currency(total) : undefined}
+          emptyText="Comece adicionando uma conta."
           icon={<Wallet className="h-4 w-4" />}
-          hint={`${accounts.length} conta${accounts.length === 1 ? "" : "s"}`}
+          hint={hasAccounts ? `${accounts.length} conta${accounts.length === 1 ? "" : "s"}` : undefined}
         />
-        <StatCard
+        <StatusCard
           label="Receitas 30d"
-          value={currency(income)}
+          value={income > 0 ? currency(income) : undefined}
+          emptyText="Cadastre sua primeira receita."
           icon={<TrendingUp className="h-4 w-4" />}
           tone="success"
         />
-        <StatCard
+        <StatusCard
           label="Despesas 30d"
-          value={currency(expense)}
+          value={expense > 0 ? currency(expense) : undefined}
+          emptyText="Nenhuma despesa registrada."
           icon={<TrendingDown className="h-4 w-4" />}
           tone="destructive"
         />
-        <StatCard
+        <StatusCard
           label="Economia"
-          value={currency(savings)}
+          value={hasMonthly ? currency(savings) : undefined}
+          emptyText="Sem dados no período."
           icon={<CreditCard className="h-4 w-4" />}
-          hint={income > 0 ? `${((savings / income) * 100).toFixed(0)}% da receita` : "—"}
+          hint={
+            income > 0 ? `${((savings / income) * 100).toFixed(0)}% da receita` : undefined
+          }
         />
       </section>
 
@@ -112,7 +126,14 @@ function DashboardPage() {
             <CardTitle className="text-sm">Evolução mensal</CardTitle>
           </CardHeader>
           <CardContent>
-            <MonthlyChart />
+            {hasTx ? (
+              <MonthlyChart />
+            ) : (
+              <EmptyState
+                title="Sua linha do tempo aparece aqui"
+                description="Registre lançamentos para visualizar sua evolução mês a mês."
+              />
+            )}
           </CardContent>
         </Card>
         <Card className="border-border/60 bg-card/60">
@@ -120,7 +141,14 @@ function DashboardPage() {
             <CardTitle className="text-sm">Despesas por categoria</CardTitle>
           </CardHeader>
           <CardContent>
-            <ExpenseByCategoryChart transactions={monthly} />
+            {expense > 0 ? (
+              <ExpenseByCategoryChart transactions={monthly} />
+            ) : (
+              <EmptyState
+                title="Sem despesas no período"
+                description="Categorize seus gastos para descobrir padrões."
+              />
+            )}
           </CardContent>
         </Card>
       </section>
@@ -137,11 +165,15 @@ function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent>
-            <TransactionsList
-              transactions={recent}
-              compact
-              emptyLabel="Cadastre seu primeiro lançamento"
-            />
+            {hasTx ? (
+              <TransactionsList transactions={recent} compact />
+            ) : (
+              <EmptyState
+                compact
+                title="Nenhum lançamento por aqui ainda"
+                description="Quando você registrar o primeiro, ele aparece nesta lista."
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -156,18 +188,7 @@ function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent>
-            {accounts.length === 0 ? (
-              <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border/70 bg-muted/20 text-center">
-                <p className="text-xs text-muted-foreground">
-                  Nenhuma conta cadastrada
-                </p>
-                <Link to="/financas">
-                  <Button size="sm" variant="secondary">
-                    <Plus className="h-3.5 w-3.5" /> Adicionar
-                  </Button>
-                </Link>
-              </div>
-            ) : (
+            {hasAccounts ? (
               <ul className="divide-y divide-border/50">
                 {accounts.map((a) => (
                   <li key={a.id} className="flex items-center gap-3 py-2.5">
@@ -182,6 +203,19 @@ function DashboardPage() {
                   </li>
                 ))}
               </ul>
+            ) : (
+              <EmptyState
+                compact
+                title="Nenhuma conta cadastrada"
+                description="Adicione contas para acompanhar seus saldos."
+                action={
+                  <Link to="/financas">
+                    <Button size="sm" variant="secondary">
+                      <Plus className="h-3.5 w-3.5" /> Adicionar conta
+                    </Button>
+                  </Link>
+                }
+              />
             )}
           </CardContent>
         </Card>
