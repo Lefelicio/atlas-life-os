@@ -123,13 +123,13 @@ export function MonthlyChart() {
         <BarChart data={data} barGap={4}>
           <XAxis
             dataKey="label"
-            stroke="hsl(var(--muted-foreground))"
+            stroke="var(--muted-foreground)"
             fontSize={11}
             tickLine={false}
             axisLine={false}
           />
           <YAxis
-            stroke="hsl(var(--muted-foreground))"
+            stroke="var(--muted-foreground)"
             fontSize={11}
             tickLine={false}
             axisLine={false}
@@ -137,17 +137,18 @@ export function MonthlyChart() {
             tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
           />
           <Tooltip
-            cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
+            cursor={{ fill: "var(--muted)" }}
             contentStyle={{
-              background: "hsl(var(--popover))",
-              border: "1px solid hsl(var(--border))",
+              background: "var(--popover)",
+              border: "1px solid var(--border)",
               borderRadius: 8,
               fontSize: 12,
+              color: "var(--popover-foreground)",
             }}
             formatter={(v: number) => currency(v)}
           />
-          <Bar dataKey="income" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="expense" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="income" fill="var(--success)" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="expense" fill="var(--destructive)" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
