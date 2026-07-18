@@ -9,61 +9,247 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ShellRouteImport } from './routes/_shell'
+import { Route as ShellIndexRouteImport } from './routes/_shell.index'
+import { Route as ShellRelatoriosRouteImport } from './routes/_shell.relatorios'
+import { Route as ShellProjetosRouteImport } from './routes/_shell.projetos'
+import { Route as ShellMinhaVidaRouteImport } from './routes/_shell.minha-vida'
+import { Route as ShellMetasRouteImport } from './routes/_shell.metas'
+import { Route as ShellFinancasRouteImport } from './routes/_shell.financas'
+import { Route as ShellConfiguracoesRouteImport } from './routes/_shell.configuracoes'
+import { Route as ShellCartoesRouteImport } from './routes/_shell.cartoes'
 
-const IndexRoute = IndexRouteImport.update({
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShellRoute = ShellRouteImport.update({
+  id: '/_shell',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShellIndexRoute = ShellIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellRelatoriosRoute = ShellRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellProjetosRoute = ShellProjetosRouteImport.update({
+  id: '/projetos',
+  path: '/projetos',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellMinhaVidaRoute = ShellMinhaVidaRouteImport.update({
+  id: '/minha-vida',
+  path: '/minha-vida',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellMetasRoute = ShellMetasRouteImport.update({
+  id: '/metas',
+  path: '/metas',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellFinancasRoute = ShellFinancasRouteImport.update({
+  id: '/financas',
+  path: '/financas',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellConfiguracoesRoute = ShellConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellCartoesRoute = ShellCartoesRouteImport.update({
+  id: '/cartoes',
+  path: '/cartoes',
+  getParentRoute: () => ShellRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof ShellIndexRoute
+  '/login': typeof LoginRoute
+  '/cartoes': typeof ShellCartoesRoute
+  '/configuracoes': typeof ShellConfiguracoesRoute
+  '/financas': typeof ShellFinancasRoute
+  '/metas': typeof ShellMetasRoute
+  '/minha-vida': typeof ShellMinhaVidaRoute
+  '/projetos': typeof ShellProjetosRoute
+  '/relatorios': typeof ShellRelatoriosRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/cartoes': typeof ShellCartoesRoute
+  '/configuracoes': typeof ShellConfiguracoesRoute
+  '/financas': typeof ShellFinancasRoute
+  '/metas': typeof ShellMetasRoute
+  '/minha-vida': typeof ShellMinhaVidaRoute
+  '/projetos': typeof ShellProjetosRoute
+  '/relatorios': typeof ShellRelatoriosRoute
+  '/': typeof ShellIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_shell': typeof ShellRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_shell/cartoes': typeof ShellCartoesRoute
+  '/_shell/configuracoes': typeof ShellConfiguracoesRoute
+  '/_shell/financas': typeof ShellFinancasRoute
+  '/_shell/metas': typeof ShellMetasRoute
+  '/_shell/minha-vida': typeof ShellMinhaVidaRoute
+  '/_shell/projetos': typeof ShellProjetosRoute
+  '/_shell/relatorios': typeof ShellRelatoriosRoute
+  '/_shell/': typeof ShellIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/cartoes'
+    | '/configuracoes'
+    | '/financas'
+    | '/metas'
+    | '/minha-vida'
+    | '/projetos'
+    | '/relatorios'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/login'
+    | '/cartoes'
+    | '/configuracoes'
+    | '/financas'
+    | '/metas'
+    | '/minha-vida'
+    | '/projetos'
+    | '/relatorios'
+    | '/'
+  id:
+    | '__root__'
+    | '/_shell'
+    | '/login'
+    | '/_shell/cartoes'
+    | '/_shell/configuracoes'
+    | '/_shell/financas'
+    | '/_shell/metas'
+    | '/_shell/minha-vida'
+    | '/_shell/projetos'
+    | '/_shell/relatorios'
+    | '/_shell/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  ShellRoute: typeof ShellRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_shell': {
+      id: '/_shell'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof ShellRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_shell/': {
+      id: '/_shell/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof ShellIndexRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/relatorios': {
+      id: '/_shell/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof ShellRelatoriosRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/projetos': {
+      id: '/_shell/projetos'
+      path: '/projetos'
+      fullPath: '/projetos'
+      preLoaderRoute: typeof ShellProjetosRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/minha-vida': {
+      id: '/_shell/minha-vida'
+      path: '/minha-vida'
+      fullPath: '/minha-vida'
+      preLoaderRoute: typeof ShellMinhaVidaRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/metas': {
+      id: '/_shell/metas'
+      path: '/metas'
+      fullPath: '/metas'
+      preLoaderRoute: typeof ShellMetasRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/financas': {
+      id: '/_shell/financas'
+      path: '/financas'
+      fullPath: '/financas'
+      preLoaderRoute: typeof ShellFinancasRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/configuracoes': {
+      id: '/_shell/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof ShellConfiguracoesRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/cartoes': {
+      id: '/_shell/cartoes'
+      path: '/cartoes'
+      fullPath: '/cartoes'
+      preLoaderRoute: typeof ShellCartoesRouteImport
+      parentRoute: typeof ShellRoute
     }
   }
 }
 
+interface ShellRouteChildren {
+  ShellCartoesRoute: typeof ShellCartoesRoute
+  ShellConfiguracoesRoute: typeof ShellConfiguracoesRoute
+  ShellFinancasRoute: typeof ShellFinancasRoute
+  ShellMetasRoute: typeof ShellMetasRoute
+  ShellMinhaVidaRoute: typeof ShellMinhaVidaRoute
+  ShellProjetosRoute: typeof ShellProjetosRoute
+  ShellRelatoriosRoute: typeof ShellRelatoriosRoute
+  ShellIndexRoute: typeof ShellIndexRoute
+}
+
+const ShellRouteChildren: ShellRouteChildren = {
+  ShellCartoesRoute: ShellCartoesRoute,
+  ShellConfiguracoesRoute: ShellConfiguracoesRoute,
+  ShellFinancasRoute: ShellFinancasRoute,
+  ShellMetasRoute: ShellMetasRoute,
+  ShellMinhaVidaRoute: ShellMinhaVidaRoute,
+  ShellProjetosRoute: ShellProjetosRoute,
+  ShellRelatoriosRoute: ShellRelatoriosRoute,
+  ShellIndexRoute: ShellIndexRoute,
+}
+
+const ShellRouteWithChildren = ShellRoute._addFileChildren(ShellRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  ShellRoute: ShellRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
