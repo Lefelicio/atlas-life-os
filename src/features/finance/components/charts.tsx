@@ -64,10 +64,11 @@ export function ExpenseByCategoryChart({ transactions }: { transactions: Transac
             </Pie>
             <Tooltip
               contentStyle={{
-                background: "hsl(var(--popover))",
-                border: "1px solid hsl(var(--border))",
+                background: "var(--popover)",
+                border: "1px solid var(--border)",
                 borderRadius: 8,
                 fontSize: 12,
+                color: "var(--popover-foreground)",
               }}
               formatter={(v: number) => currency(v)}
             />
