@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,8 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useFinance } from "../store";
-import { todayISO } from "../utils";
+import { suggestFromHistory, todayISO } from "../utils";
 import type { TxKind } from "../types";
+import { TagsInput } from "./tags-input";
 
 interface Props {
   open: boolean;
@@ -29,7 +31,7 @@ interface Props {
 }
 
 export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" }: Props) {
-  const { accounts, categories, addTransaction } = useFinance();
+  const { accounts, categories, transactions, addTransaction } = useFinance();
   const [kind, setKind] = useState<TxKind>(defaultKind);
   const [date, setDate] = useState(todayISO());
   const [accountId, setAccountId] = useState("");
@@ -38,6 +40,8 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
+  const [tagIds, setTagIds] = useState<string[]>([]);
+  const [suggestionUsed, setSuggestionUsed] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -49,12 +53,30 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
       setDescription("");
       setAmount("");
       setNotes("");
+      setTagIds([]);
+      setSuggestionUsed(false);
     }
   }, [open, defaultKind, accounts]);
 
   const filteredCats = categories.filter(
     (c) => c.kind === (kind === "income" ? "income" : "expense"),
   );
+
+  // Smart history suggestion — based on description
+  const suggestion = useMemo(
+    () => (description.length >= 3 ? suggestFromHistory(description, transactions) : null),
+    [description, transactions],
+  );
+
+  const applySuggestion = () => {
+    if (!suggestion) return;
+    if (suggestion.accountId) setAccountId(suggestion.accountId);
+    if (suggestion.categoryId) setCategoryId(suggestion.categoryId);
+    if (suggestion.amount && !amount) setAmount(String(suggestion.amount));
+    if (suggestion.tagIds?.length) setTagIds(suggestion.tagIds);
+    if (suggestion.notes && !notes) setNotes(suggestion.notes);
+    setSuggestionUsed(true);
+  };
 
   const canSave =
     accountId &&
@@ -72,6 +94,7 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
       description: description || (kind === "transfer" ? "Transferência" : ""),
       amount: Number(amount),
       notes: notes || undefined,
+      tagIds: tagIds.length ? tagIds : undefined,
     });
     onOpenChange(false);
   };
@@ -121,9 +144,7 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
                 </SelectTrigger>
                 <SelectContent>
                   {accounts.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}
-                    </SelectItem>
+                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -141,9 +162,7 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
                   {accounts
                     .filter((a) => a.id !== accountId)
                     .map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.name}
-                      </SelectItem>
+                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                     ))}
                 </SelectContent>
               </Select>
@@ -157,9 +176,7 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
                 </SelectTrigger>
                 <SelectContent>
                   {filteredCats.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -173,25 +190,34 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
+            {suggestion && !suggestionUsed && (
+              <button
+                type="button"
+                onClick={applySuggestion}
+                className="mt-1.5 flex w-full items-center gap-1.5 rounded-md border border-dashed border-primary/40 bg-primary/5 px-2 py-1 text-left text-[11px] text-primary transition hover:bg-primary/10"
+              >
+                <Sparkles className="h-3 w-3" />
+                Preencher a partir de lançamentos anteriores
+              </button>
+            )}
+          </div>
+
+          <div>
+            <Label className="text-xs">Tags</Label>
+            <div className="pt-1">
+              <TagsInput value={tagIds} onChange={setTagIds} />
+            </div>
           </div>
 
           <div>
             <Label className="text-xs">Observações</Label>
-            <Textarea
-              rows={2}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
+            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={submit} disabled={!canSave}>
-            Salvar
-          </Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={submit} disabled={!canSave}>Salvar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

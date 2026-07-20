@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { AppHeader } from "@/components/app-header";
 import { AppFooter } from "@/components/app-footer";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { QuickAddFab } from "@/features/finance/components/quick-add-fab";
 
 export const Route = createFileRoute("/_shell")({
   component: ShellLayout,
@@ -23,6 +24,7 @@ function ShellLayout() {
           </div>
           <AppFooter />
         </SidebarInset>
+        <QuickAddFab />
       </div>
     </SidebarProvider>
   );
