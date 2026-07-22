@@ -2,45 +2,37 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowUpRight,
-  CalendarClock,
-  CreditCard,
-  Layers,
+  ArrowRight,
   Plus,
-  Repeat,
-  TrendingDown,
+  ChevronRight,
+  Target,
   TrendingUp,
-  Wallet,
+  TrendingDown,
+  CheckCircle2,
+  CircleAlert,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Greeting } from "@/components/greeting";
 import { Insight } from "@/components/insight";
 import { EmptyState } from "@/components/empty-state";
-import { StatusCard } from "@/components/status-card";
-import { PlaceholderCard } from "@/components/placeholder-card";
 
 import { useFinance } from "@/features/finance/store";
 import {
-  accountBalance,
-  cardUsage,
   computePeriod,
   currency,
-  formatShortDate,
   inRange,
-  monthInstallments,
   sumExpense,
   sumIncome,
   totalBalance,
-  upcomingDueDates,
 } from "@/features/finance/utils";
+import { useGoals, goalProgress, goalRemaining } from "@/features/goals/store";
 import { TransactionsList } from "@/features/finance/components/transactions-list";
 import { TransactionDialog } from "@/features/finance/components/transaction-dialog";
-import {
-  ExpenseByCategoryChart,
-  MonthlyChart,
-} from "@/features/finance/components/charts";
 import { useDashboardInsight } from "@/features/insights/use-dashboard-insight";
+import { useDashboardActions } from "@/features/insights/use-dashboard-actions";
 
 export const Route = createFileRoute("/_shell/")({
   component: DashboardPage,
@@ -56,15 +48,8 @@ export const Route = createFileRoute("/_shell/")({
 });
 
 function DashboardPage() {
-  const {
-    accounts,
-    transactions,
-    cards,
-    plans,
-    installments,
-    recurrences,
-    runRecurrences,
-  } = useFinance();
+  const { accounts, transactions, cards, runRecurrences } = useFinance();
+  const { goals } = useGoals();
   const [txOpen, setTxOpen] = useState(false);
 
   useEffect(() => {
@@ -76,36 +61,43 @@ function DashboardPage() {
     () => transactions.filter((t) => inRange(t.date, range)),
     [transactions, range],
   );
-  const income = sumIncome(monthly);
-  const expense = sumExpense(monthly);
-  const savings = income - expense;
+
+  const insight = useDashboardInsight({ accounts, transactions, monthly, goals });
+  const actions = useDashboardActions({ accounts, transactions, cards, goals });
+
+  // Balance
   const total = totalBalance(accounts, transactions);
-  const recent = transactions.slice(0, 6);
-
-  const activeCards = cards.filter((c) => c.active);
-  const cardsUsage = activeCards.reduce(
-    (acc, c) => {
-      const u = cardUsage(c, installments, plans);
-      return { used: acc.used + u.used, limit: acc.limit + c.limit };
-    },
-    { used: 0, limit: 0 },
-  );
-  const cardsAvailable = Math.max(0, cardsUsage.limit - cardsUsage.used);
-  const upcoming = upcomingDueDates(cards, 14).slice(0, 3);
-  const monthParcelas = monthInstallments(installments);
-  const monthRecTotal = recurrences
-    .filter((r) => r.active)
-    .reduce((s, r) => s + (r.kind === "expense" ? r.amount : 0), 0);
-
-  const insight = useDashboardInsight({ accounts, transactions, monthly });
-
   const hasAccounts = accounts.length > 0;
-  const hasTx = transactions.length > 0;
-  const hasMonthly = monthly.length > 0;
+
+  // Previous month comparison
+  const prevMonthSavings = useMemo(() => {
+    const now = new Date();
+    const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    const prevRange = {
+      key: "custom" as const,
+      from: prevStart.toISOString().slice(0, 10),
+      to: prevEnd.toISOString().slice(0, 10),
+    };
+    const prevTx = transactions.filter((t) => inRange(t.date, prevRange));
+    return sumIncome(prevTx) - sumExpense(prevTx);
+  }, [transactions]);
+
+  const currentSavings = sumIncome(monthly) - sumExpense(monthly);
+  const savingsDiff = currentSavings - prevMonthSavings;
+  const hasPrevData = prevMonthSavings !== 0 || transactions.length > 0;
+
+  // Primary goal
+  const activeGoals = goals.filter((g) => !g.archived);
+  const primaryGoal = activeGoals.find((g) => g.isPrimary) ?? activeGoals[0];
+
+  // Recent transactions
+  const recent = transactions.slice(0, 5);
 
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 border-b border-border/60 pb-6">
+    <div className="mx-auto max-w-3xl space-y-10">
+      {/* 1. Greeting */}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
         <Greeting />
         <Button
           size="lg"
@@ -119,230 +111,165 @@ function DashboardPage() {
         </Button>
       </div>
 
-      <Insight message={insight} />
+      {/* 2. Insight of the day */}
+      <Insight message={insight} className="rounded-xl" />
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatusCard
-          label="Saldo total"
-          value={hasAccounts ? currency(total) : undefined}
-          emptyText="Comece adicionando uma conta."
-          icon={<Wallet className="h-4 w-4" />}
-          hint={hasAccounts ? `${accounts.length} conta${accounts.length === 1 ? "" : "s"}` : undefined}
-        />
-        <StatusCard
-          label="Receitas 30d"
-          value={income > 0 ? currency(income) : undefined}
-          emptyText="Cadastre sua primeira receita."
-          icon={<TrendingUp className="h-4 w-4" />}
-          tone="success"
-        />
-        <StatusCard
-          label="Despesas 30d"
-          value={expense > 0 ? currency(expense) : undefined}
-          emptyText="Nenhuma despesa registrada."
-          icon={<TrendingDown className="h-4 w-4" />}
-          tone="destructive"
-        />
-        <StatusCard
-          label="Economia"
-          value={hasMonthly ? currency(savings) : undefined}
-          emptyText="Sem dados no período."
-          icon={<CreditCard className="h-4 w-4" />}
-          hint={
-            income > 0 ? `${((savings / income) * 100).toFixed(0)}% da receita` : undefined
-          }
-        />
-      </section>
-
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatusCard
-          label="Cartões ativos"
-          value={activeCards.length > 0 ? String(activeCards.length) : undefined}
-          emptyText="Cadastre seus cartões."
-          icon={<CreditCard className="h-4 w-4" />}
-          hint={cards.length > activeCards.length ? `${cards.length - activeCards.length} inativos` : undefined}
-        />
-        <StatusCard
-          label="Limite utilizado"
-          value={cardsUsage.limit > 0 ? currency(cardsUsage.used) : undefined}
-          emptyText="Sem limites cadastrados."
-          icon={<Layers className="h-4 w-4" />}
-          hint={
-            cardsUsage.limit > 0
-              ? `${((cardsUsage.used / cardsUsage.limit) * 100).toFixed(0)}% do total`
-              : undefined
-          }
-        />
-        <StatusCard
-          label="Limite disponível"
-          value={cardsUsage.limit > 0 ? currency(cardsAvailable) : undefined}
-          emptyText="—"
-          icon={<CreditCard className="h-4 w-4" />}
-          tone="success"
-        />
-        <StatusCard
-          label="Parcelas do mês"
-          value={
-            monthParcelas.length > 0
-              ? currency(monthParcelas.reduce((s, i) => s + i.amount, 0))
-              : undefined
-          }
-          emptyText="Nenhuma parcela este mês."
-          icon={<Layers className="h-4 w-4" />}
-          hint={monthParcelas.length > 0 ? `${monthParcelas.length} parcela(s)` : undefined}
-        />
-      </section>
-
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="border-border/60 bg-card/60 lg:col-span-2">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Evolução mensal</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {hasTx ? (
-              <MonthlyChart />
-            ) : (
-              <EmptyState
-                title="Sua linha do tempo aparece aqui"
-                description="Registre lançamentos para visualizar sua evolução mês a mês."
-              />
-            )}
-          </CardContent>
-        </Card>
-        <Card className="border-border/60 bg-card/60">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Despesas por categoria</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {expense > 0 ? (
-              <ExpenseByCategoryChart transactions={monthly} />
-            ) : (
-              <EmptyState
-                title="Sem despesas no período"
-                description="Categorize seus gastos para descobrir padrões."
-              />
-            )}
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="border-border/60 bg-card/60">
-          <CardHeader className="flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <CalendarClock className="h-4 w-4 text-muted-foreground" />
-              Próximos vencimentos
-            </CardTitle>
-            <Link to="/cartoes" className="text-xs text-muted-foreground hover:text-foreground">
-              Ver →
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {upcoming.length === 0 ? (
-              <EmptyState compact title="Nada nos próximos 14 dias" />
-            ) : (
-              <ul className="divide-y divide-border/50">
-                {upcoming.map(({ card, dueDate }) => (
-                  <li key={card.id} className="flex items-center gap-3 py-2 text-sm">
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: card.color }} />
-                    <span className="flex-1 truncate">{card.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {formatShortDate(dueDate.toISOString().slice(0, 10))}
+      {/* 3. General balance */}
+      <Link to="/financas" className="block">
+        <Card className="group border-border/40 bg-card/40 transition-colors hover:border-border">
+          <CardContent className="p-8">
+            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Saldo geral
+            </p>
+            <p className="mt-3 text-4xl font-semibold tracking-tight tabular-nums">
+              {hasAccounts ? currency(total) : "—"}
+            </p>
+            {hasAccounts && hasPrevData && savingsDiff !== 0 && (
+              <div className="mt-3 flex items-center gap-1.5 text-sm">
+                {savingsDiff > 0 ? (
+                  <>
+                    <TrendingUp className="h-4 w-4 text-success" />
+                    <span className="text-success">
+                      +{currency(savingsDiff)}
                     </span>
-                  </li>
-                ))}
-              </ul>
+                    <span className="text-muted-foreground">vs. mês anterior</span>
+                  </>
+                ) : (
+                  <>
+                    <TrendingDown className="h-4 w-4 text-destructive" />
+                    <span className="text-destructive">
+                      {currency(savingsDiff)}
+                    </span>
+                    <span className="text-muted-foreground">vs. mês anterior</span>
+                  </>
+                )}
+              </div>
+            )}
+            {!hasAccounts && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Comece adicionando uma conta.
+              </p>
             )}
           </CardContent>
         </Card>
+      </Link>
 
-        <Card className="border-border/60 bg-card/60">
-          <CardHeader className="flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Repeat className="h-4 w-4 text-muted-foreground" />
-              Recorrências
-            </CardTitle>
-            <Link to="/financas" className="text-xs text-muted-foreground hover:text-foreground">
-              Ver →
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {recurrences.length === 0 ? (
-              <EmptyState compact title="Sem recorrências ativas" />
-            ) : (
-              <>
-                <p className="text-2xl font-semibold tabular-nums">{currency(monthRecTotal)}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  {recurrences.filter((r) => r.active).length} ativa(s) por ciclo
+      {/* 4. Primary goal */}
+      {primaryGoal ? (
+        <Link to="/metas" className="block">
+          <Card className="group border-border/40 bg-card/40 transition-colors hover:border-border">
+            <CardContent className="p-8">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                  Meta principal
                 </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/60 bg-card/60">
-          <CardHeader className="flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm">Contas</CardTitle>
-            <Link to="/financas" className="text-xs text-muted-foreground hover:text-foreground">
-              Gerenciar →
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {hasAccounts ? (
-              <ul className="divide-y divide-border/50">
-                {accounts.slice(0, 4).map((a) => (
-                  <li key={a.id} className="flex items-center gap-3 py-2 text-sm">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: a.color }} />
-                    <span className="flex-1 truncate">{a.name}</span>
-                    <span className="text-sm font-semibold tabular-nums">
-                      {currency(accountBalance(a, transactions))}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <EmptyState
-                compact
-                title="Nenhuma conta cadastrada"
-                action={
-                  <Link to="/financas">
-                    <Button size="sm" variant="secondary">
-                      <Plus className="h-3.5 w-3.5" /> Adicionar conta
-                    </Button>
-                  </Link>
-                }
+                <Target className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <p className="mt-3 text-xl font-semibold tracking-tight">
+                {primaryGoal.title}
+              </p>
+              <div className="mt-4 flex items-baseline justify-between">
+                <span className="text-3xl font-semibold tabular-nums">
+                  {goalProgress(primaryGoal)}%
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {currency(primaryGoal.currentAmount)} / {currency(primaryGoal.targetAmount)}
+                </span>
+              </div>
+              <Progress
+                value={goalProgress(primaryGoal)}
+                className="mt-3 h-2"
+                style={{ backgroundColor: "var(--muted)" }}
               />
-            )}
+              <p className="mt-3 text-sm text-muted-foreground">
+                Faltam {currency(goalRemaining(primaryGoal))}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+      ) : (
+        <Card className="border-border/40 bg-card/40">
+          <CardContent className="p-8">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                Meta principal
+              </p>
+              <Target className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <EmptyState
+              className="mt-4"
+              title="Nenhuma meta definida"
+              description="Defina um objetivo para acompanhar seu progresso aqui."
+              action={
+                <Link to="/metas">
+                  <Button size="sm" variant="secondary">
+                    Criar meta <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                  </Button>
+                </Link>
+              }
+            />
           </CardContent>
         </Card>
-      </section>
+      )}
 
-      <section>
-        <Card className="border-border/60 bg-card/60">
-          <CardHeader className="flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm">Últimos lançamentos</CardTitle>
-            <Link to="/financas" className="text-xs text-muted-foreground hover:text-foreground">
+      {/* 5. Upcoming actions */}
+      {actions.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            Próximas ações
+          </p>
+          <div className="space-y-2">
+            {actions.map((action) => (
+              <Link key={action.id} to={action.href} className="block">
+                <div className="group flex items-center gap-3 rounded-lg border border-border/40 bg-card/30 px-4 py-3 transition-colors hover:border-border hover:bg-card/50">
+                  {action.tone === "attention" ? (
+                    <CircleAlert className="h-4 w-4 shrink-0 text-primary" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  )}
+                  <span className="flex-1 text-sm text-foreground">
+                    {action.label}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 6. Recent activity */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            Atividade recente
+          </p>
+          {transactions.length > 0 && (
+            <Link
+              to="/financas"
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
               Ver tudo →
             </Link>
-          </CardHeader>
-          <CardContent>
-            {hasTx ? (
+          )}
+        </div>
+        {transactions.length > 0 ? (
+          <Card className="border-border/40 bg-card/40">
+            <CardContent className="p-4">
               <TransactionsList transactions={recent} compact />
-            ) : (
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border-border/40 bg-card/40">
+            <CardContent className="p-8">
               <EmptyState
-                compact
-                title="Nenhum lançamento por aqui ainda"
-                description="Quando você registrar o primeiro, ele aparece nesta lista."
+                title="Nenhum lançamento ainda"
+                description="Quando você registrar o primeiro, ele aparece aqui."
               />
-            )}
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <PlaceholderCard title="Missões da semana" height="h-40" />
-        <PlaceholderCard title="Hábitos" height="h-40" />
-      </section>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       <TransactionDialog open={txOpen} onOpenChange={setTxOpen} />
     </div>
