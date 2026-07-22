@@ -17,6 +17,7 @@ import { Route as ShellConfiguracoesRouteImport } from './routes/_shell.configur
 import { Route as ShellFinancasRouteImport } from './routes/_shell.financas'
 import { Route as ShellMetasRouteImport } from './routes/_shell.metas'
 import { Route as ShellMinhaVidaRouteImport } from './routes/_shell.minha-vida'
+import { Route as ShellPessoalRouteImport } from './routes/_shell.pessoal'
 import { Route as ShellProjetosRouteImport } from './routes/_shell.projetos'
 import { Route as ShellRelatoriosRouteImport } from './routes/_shell.relatorios'
 
@@ -59,6 +60,11 @@ const ShellMinhaVidaRoute = ShellMinhaVidaRouteImport.update({
   path: '/minha-vida',
   getParentRoute: () => ShellRoute,
 } as any)
+const ShellPessoalRoute = ShellPessoalRouteImport.update({
+  id: '/pessoal',
+  path: '/pessoal',
+  getParentRoute: () => ShellRoute,
+} as any)
 const ShellProjetosRoute = ShellProjetosRouteImport.update({
   id: '/projetos',
   path: '/projetos',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/financas': typeof ShellFinancasRoute
   '/metas': typeof ShellMetasRoute
   '/minha-vida': typeof ShellMinhaVidaRoute
+  '/pessoal': typeof ShellPessoalRoute
   '/projetos': typeof ShellProjetosRoute
   '/relatorios': typeof ShellRelatoriosRoute
 }
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   '/financas': typeof ShellFinancasRoute
   '/metas': typeof ShellMetasRoute
   '/minha-vida': typeof ShellMinhaVidaRoute
+  '/pessoal': typeof ShellPessoalRoute
   '/projetos': typeof ShellProjetosRoute
   '/relatorios': typeof ShellRelatoriosRoute
   '/': typeof ShellIndexRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/_shell/financas': typeof ShellFinancasRoute
   '/_shell/metas': typeof ShellMetasRoute
   '/_shell/minha-vida': typeof ShellMinhaVidaRoute
+  '/_shell/pessoal': typeof ShellPessoalRoute
   '/_shell/projetos': typeof ShellProjetosRoute
   '/_shell/relatorios': typeof ShellRelatoriosRoute
   '/_shell/': typeof ShellIndexRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/financas'
     | '/metas'
     | '/minha-vida'
+    | '/pessoal'
     | '/projetos'
     | '/relatorios'
   fileRoutesByTo: FileRoutesByTo
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
     | '/financas'
     | '/metas'
     | '/minha-vida'
+    | '/pessoal'
     | '/projetos'
     | '/relatorios'
     | '/'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '/_shell/financas'
     | '/_shell/metas'
     | '/_shell/minha-vida'
+    | '/_shell/pessoal'
     | '/_shell/projetos'
     | '/_shell/relatorios'
     | '/_shell/'
@@ -205,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShellMinhaVidaRouteImport
       parentRoute: typeof ShellRoute
     }
+    '/_shell/pessoal': {
+      id: '/_shell/pessoal'
+      path: '/pessoal'
+      fullPath: '/pessoal'
+      preLoaderRoute: typeof ShellPessoalRouteImport
+      parentRoute: typeof ShellRoute
+    }
     '/_shell/projetos': {
       id: '/_shell/projetos'
       path: '/projetos'
@@ -228,6 +247,7 @@ interface ShellRouteChildren {
   ShellFinancasRoute: typeof ShellFinancasRoute
   ShellMetasRoute: typeof ShellMetasRoute
   ShellMinhaVidaRoute: typeof ShellMinhaVidaRoute
+  ShellPessoalRoute: typeof ShellPessoalRoute
   ShellProjetosRoute: typeof ShellProjetosRoute
   ShellRelatoriosRoute: typeof ShellRelatoriosRoute
   ShellIndexRoute: typeof ShellIndexRoute
@@ -239,6 +259,7 @@ const ShellRouteChildren: ShellRouteChildren = {
   ShellFinancasRoute: ShellFinancasRoute,
   ShellMetasRoute: ShellMetasRoute,
   ShellMinhaVidaRoute: ShellMinhaVidaRoute,
+  ShellPessoalRoute: ShellPessoalRoute,
   ShellProjetosRoute: ShellProjetosRoute,
   ShellRelatoriosRoute: ShellRelatoriosRoute,
   ShellIndexRoute: ShellIndexRoute,

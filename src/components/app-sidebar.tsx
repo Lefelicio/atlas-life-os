@@ -6,6 +6,7 @@ import {
   Target,
   FolderKanban,
   HeartPulse,
+  User,
   BarChart3,
   Settings,
 } from "lucide-react";
@@ -37,6 +38,7 @@ const primary: NavItem[] = [
   { title: "Metas", url: "/metas", icon: Target },
   { title: "Projetos", url: "/projetos", icon: FolderKanban },
   { title: "Minha Vida", url: "/minha-vida", icon: HeartPulse },
+  { title: "Pessoal", url: "/pessoal", icon: User },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
 ];
 
