@@ -5,7 +5,7 @@ export function AppFooter() {
         <p>
           Atlas <span className="mx-1 opacity-40">·</span> Life OS
         </p>
-        <p className="tracking-wide">v0.1 · fundação</p>
+        <p className="tracking-wide">v1.0 · MVP</p>
       </div>
     </footer>
   );

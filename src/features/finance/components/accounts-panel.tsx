@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useFinance } from "../store";
+import { useFinance } from "../hooks/use-finance";
 import { accountBalance, currency, totalBalance } from "../utils";
 import { AccountDialog } from "./account-dialog";
 import type { Account } from "../types";
@@ -134,7 +135,11 @@ export function AccountsPanel() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (confirmDelete) removeAccount(confirmDelete.id);
+                if (confirmDelete) {
+                  removeAccount(confirmDelete.id).catch((err: unknown) =>
+                    toast.error(err instanceof Error ? err.message : "Erro ao excluir conta."),
+                  );
+                }
                 setConfirmDelete(null);
               }}
             >

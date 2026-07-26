@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { format, parseISO, startOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useFinance } from "../store";
+import { useFinance } from "../hooks/use-finance";
 import { currency } from "../utils";
 import type { Transaction } from "../types";
 

@@ -1,7 +1,7 @@
 import { Star, Trash2, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useFinance } from "../store";
+import { useFinance } from "../hooks/use-finance";
 import { currency, todayISO } from "../utils";
 import type { Favorite } from "../types";
 import { toast } from "sonner";

@@ -2,7 +2,7 @@ import { Repeat, Trash2, Power } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useFinance } from "../store";
+import { useFinance } from "../hooks/use-finance";
 import { currency, formatShortDate } from "../utils";
 import type { Recurrence } from "../types";
 

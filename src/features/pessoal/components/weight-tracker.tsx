@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   Line,
   LineChart,
@@ -25,12 +26,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-import { usePessoal } from "../store";
+import { useWeights } from "../hooks/use-weights";
+import { useProfile } from "../hooks/use-profile";
 import { calcBMI, currentWeight, initialWeight, weightDiffToGoal, formatWeight } from "../utils";
 import { cn } from "@/lib/utils";
 
 export function WeightTracker() {
-  const { weights, profile, addWeight, removeWeight } = usePessoal();
+  const { weights, addWeight, removeWeight } = useWeights();
+  const { profile } = useProfile();
   const [open, setOpen] = useState(false);
 
   const cur = currentWeight(weights);
@@ -139,7 +142,11 @@ export function WeightTracker() {
                         <span className="text-sm font-medium tabular-nums">{formatWeight(w.weight)}</span>
                         {w.notes && <span className="hidden max-w-[200px] truncate text-xs text-muted-foreground sm:block">{w.notes}</span>}
                         <button
-                          onClick={() => removeWeight(w.id)}
+                          onClick={() => {
+                            removeWeight(w.id).catch((err: unknown) =>
+                              toast.error(err instanceof Error ? err.message : "Erro ao remover peso."),
+                            );
+                          }}
                           className="text-xs text-muted-foreground opacity-0 transition hover:text-destructive group-hover:opacity-100"
                         >
                           Remover
@@ -188,20 +195,28 @@ function WeightDialog({
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  onAdd: (data: { date: string; weight: number; notes?: string }) => void;
+  onAdd: (data: { date: string; weight: number; notes?: string }) => Promise<unknown>;
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const [date, setDate] = useState(today);
   const [weight, setWeight] = useState("");
   const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const submit = () => {
+  const submit = async () => {
     const w = Number(weight);
-    if (!date || !w || w <= 0) return;
-    onAdd({ date, weight: w, notes: notes || undefined });
-    setWeight("");
-    setNotes("");
-    onOpenChange(false);
+    if (!date || !w || w <= 0 || saving) return;
+    setSaving(true);
+    try {
+      await onAdd({ date, weight: w, notes: notes || undefined });
+      setWeight("");
+      setNotes("");
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao registrar peso.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -226,7 +241,7 @@ function WeightDialog({
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={submit} disabled={!weight}>Salvar</Button>
+          <Button onClick={submit} disabled={!weight || saving}>{saving ? "Salvando..." : "Salvar"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

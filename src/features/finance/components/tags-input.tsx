@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useFinance } from "../store";
+import { useFinance } from "../hooks/use-finance";
 import { PALETTE } from "../utils";
 import { cn } from "@/lib/utils";
 
@@ -30,8 +30,8 @@ export function TagsInput({ value, onChange }: Props) {
     else onChange([...value, id]);
   };
 
-  const create = () => {
-    const tag = addTag({
+  const create = async () => {
+    const tag = await addTag({
       name: query.trim(),
       color: PALETTE[Math.floor(Math.random() * PALETTE.length)],
     });

@@ -1,6 +1,7 @@
 import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { useFinance } from "../store";
+import { useFinance } from "../hooks/use-finance";
 import { currency, formatDate } from "../utils";
 import type { Transaction } from "../types";
 import { cn } from "@/lib/utils";
@@ -85,7 +86,11 @@ export function TransactionsList({
               size="icon"
               variant="ghost"
               className="h-7 w-7 opacity-0 group-hover:opacity-100"
-              onClick={() => removeTransaction(t.id)}
+              onClick={() => {
+                removeTransaction(t.id).catch((err: unknown) =>
+                  toast.error(err instanceof Error ? err.message : "Erro ao excluir lançamento."),
+                );
+              }}
               aria-label="Excluir"
             >
               <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />

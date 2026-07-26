@@ -82,3 +82,5 @@ export interface TimelineEvent {
 }
 
 export type WeightUnit = "kg";
+
+export type WorkoutInput = Omit<Workout, "id" | "createdAt">;

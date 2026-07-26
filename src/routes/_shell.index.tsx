@@ -16,10 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Greeting } from "@/components/greeting";
-import { Insight } from "@/components/insight";
 import { EmptyState } from "@/components/empty-state";
 
-import { useFinance } from "@/features/finance/store";
+import { useFinance } from "@/features/finance/hooks/use-finance";
 import {
   computePeriod,
   currency,
@@ -31,8 +30,14 @@ import {
 import { useGoals, goalProgress, goalRemaining } from "@/features/goals/store";
 import { TransactionsList } from "@/features/finance/components/transactions-list";
 import { TransactionDialog } from "@/features/finance/components/transaction-dialog";
-import { useDashboardInsight } from "@/features/insights/use-dashboard-insight";
 import { useDashboardActions } from "@/features/insights/use-dashboard-actions";
+import { useSmartMessages } from "@/features/insights/use-smart-messages";
+import { usePlanning } from "@/features/planning/store";
+import { computeGroupSummary, monthTransactions, healthMessages } from "@/features/planning/utils";
+import { GROUP_ORDER } from "@/features/planning/types";
+import { useObjetivos } from "@/features/objetivos/hooks/use-objetivos";
+import { usePatrimony } from "@/features/patrimony/store";
+import { monthEntries, sumEntries } from "@/features/patrimony/utils";
 
 export const Route = createFileRoute("/_shell/")({
   component: DashboardPage,
@@ -48,8 +53,11 @@ export const Route = createFileRoute("/_shell/")({
 });
 
 function DashboardPage() {
-  const { accounts, transactions, cards, runRecurrences } = useFinance();
+  const { accounts, transactions, cards, categories, runRecurrences } = useFinance();
   const { goals } = useGoals();
+  const { config, categoryMappings } = usePlanning();
+  const { objectives } = useObjetivos();
+  const { entries: assetEntries } = usePatrimony();
   const [txOpen, setTxOpen] = useState(false);
 
   useEffect(() => {
@@ -62,8 +70,8 @@ function DashboardPage() {
     [transactions, range],
   );
 
-  const insight = useDashboardInsight({ accounts, transactions, monthly, goals });
   const actions = useDashboardActions({ accounts, transactions, cards, goals });
+  const smartMessages = useSmartMessages();
 
   // Balance
   const total = totalBalance(accounts, transactions);
@@ -93,6 +101,22 @@ function DashboardPage() {
 
   // Recent transactions
   const recent = transactions.slice(0, 5);
+  const accountsCount = accounts.length;
+  const transactionsCount = transactions.length;
+
+  // Sprint 7 summaries
+  const planningMessages = useMemo(() => {
+    if (config.monthlyIncome <= 0) return [];
+    const monthTxs = monthTransactions(transactions);
+    const summaries = GROUP_ORDER.map((g) =>
+      computeGroupSummary(g, config, monthTxs, categories, categoryMappings),
+    );
+    return healthMessages(summaries);
+  }, [config, categoryMappings, transactions, accounts]);
+
+  const activeObjectives = objectives.filter((o) => o.status === "active").length;
+  const completedObjectives = objectives.filter((o) => o.status === "completed").length;
+  const monthAssets = useMemo(() => sumEntries(monthEntries(assetEntries)), [assetEntries]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-10">
@@ -111,10 +135,110 @@ function DashboardPage() {
         </Button>
       </div>
 
-      {/* 2. Insight of the day */}
-      <Insight message={insight} className="rounded-xl" />
+      {/* 2. Smart messages */}
+      {smartMessages.length > 0 && (
+        <div className="space-y-2">
+          {smartMessages.map((m) => (
+            <div
+              key={m.id}
+              className={`flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm ${
+                m.tone === "positive"
+                  ? "border-success/20 bg-success/5 text-foreground"
+                  : m.tone === "attention"
+                    ? "border-warning/20 bg-warning/5 text-foreground"
+                    : "border-border/40 bg-card/30 text-muted-foreground"
+              }`}
+            >
+              {m.tone === "positive" ? (
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+              ) : m.tone === "attention" ? (
+                <CircleAlert className="h-4 w-4 shrink-0 text-warning" />
+              ) : null}
+              <span>{m.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* 3. General balance */}
+      {/* Sprint 7: Module summaries */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Link to="/planejamento" className="block">
+          <Card className="group h-full border-border/40 bg-card/40 transition-colors hover:border-border">
+            <CardContent className="p-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Planejamento</p>
+              <p className="mt-1.5 text-sm font-medium">
+                {planningMessages.length > 0 ? planningMessages[0] : "Não configurado"}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/objetivos" className="block">
+          <Card className="group h-full border-border/40 bg-card/40 transition-colors hover:border-border">
+            <CardContent className="p-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Objetivos</p>
+              <p className="mt-1.5 text-sm font-medium">
+                {activeObjectives} ativos{completedObjectives > 0 ? ` · ${completedObjectives} concluído${completedObjectives > 1 ? "s" : ""}` : ""}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/patrimonio" className="block">
+          <Card className="group h-full border-border/40 bg-card/40 transition-colors hover:border-border">
+            <CardContent className="p-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Patrimônio</p>
+              <p className="mt-1.5 text-sm font-medium tabular-nums">
+                {currency(monthAssets)} aportados este mês
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
+      {/* 3. Stats grid */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <Card className="border-border/40 bg-card/40">
+          <CardContent className="p-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Saldo total</p>
+            <p className="mt-1.5 text-lg font-semibold tabular-nums">
+              {hasAccounts ? currency(total) : "—"}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/40 bg-card/40">
+          <CardContent className="p-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Receitas</p>
+            <p className="mt-1.5 text-lg font-semibold tabular-nums text-success">
+              {transactionsCount > 0 ? currency(sumIncome(monthly)) : "—"}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/40 bg-card/40">
+          <CardContent className="p-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Despesas</p>
+            <p className="mt-1.5 text-lg font-semibold tabular-nums text-destructive">
+              {transactionsCount > 0 ? currency(sumExpense(monthly)) : "—"}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/40 bg-card/40">
+          <CardContent className="p-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Contas</p>
+            <p className="mt-1.5 text-lg font-semibold tabular-nums">
+              {accountsCount}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/40 bg-card/40">
+          <CardContent className="p-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Transações</p>
+            <p className="mt-1.5 text-lg font-semibold tabular-nums">
+              {transactionsCount}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 4. General balance */}
       <Link to="/financas" className="block">
         <Card className="group border-border/40 bg-card/40 transition-colors hover:border-border">
           <CardContent className="p-8">

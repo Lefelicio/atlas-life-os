@@ -8,6 +8,7 @@ import { WeightTracker } from "@/features/pessoal/components/weight-tracker";
 import { WorkoutCalendar } from "@/features/pessoal/components/workout-calendar";
 import { StatsPanel } from "@/features/pessoal/components/stats-panel";
 import { Timeline } from "@/features/pessoal/components/timeline";
+import { triggerHelpOpen } from "@/features/help/help-events";
 
 export const Route = createFileRoute("/_shell/pessoal")({
   component: PessoalPage,
@@ -21,6 +22,7 @@ function PessoalPage() {
         eyebrow="Módulo"
         title="Pessoal"
         description="Acompanhe sua evolução física e registre seus treinos ao longo do tempo."
+        onHelp={triggerHelpOpen}
       />
 
       <ProfileCard />

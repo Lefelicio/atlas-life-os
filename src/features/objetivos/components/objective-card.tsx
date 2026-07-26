@@ -19,6 +19,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import type { Objective, ObjectiveCategory, ObjectiveStatus } from "../types";
-import { CATEGORY_LABELS, STATUS_LABELS } from "../types";
+import { CATEGORY_LABELS, STATUS_LABELS, KIND_LABELS } from "../types";
 import { objectiveProgress } from "../resolver";
 
 const CATEGORY_ICONS: Record<ObjectiveCategory, LucideIcon> = {
@@ -60,6 +61,7 @@ export function ObjectiveCard({ objective, onOpen, onSetStatus, onRemove }: Prop
   const deadline = objective.deadline ? parseISO(objective.deadline) : null;
   const daysLeft = deadline ? differenceInDays(deadline, new Date()) : null;
   const updated = format(parseISO(objective.lastUpdated), "dd/MM/yyyy", { locale: ptBR });
+  const kind = objective.kind ?? (objective.progressType === "auto" ? "auto" : "manual");
 
   return (
     <Card
@@ -81,9 +83,13 @@ export function ObjectiveCard({ objective, onOpen, onSetStatus, onRemove }: Prop
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{objective.title}</p>
-              <p className="text-[11px] text-muted-foreground">
-                {CATEGORY_LABELS[objective.category]}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-[11px] text-muted-foreground">
+                  {CATEGORY_LABELS[objective.category]}
+                </p>
+                <span className="text-[10px] text-muted-foreground">·</span>
+                <p className="text-[11px] text-muted-foreground">{KIND_LABELS[kind]}</p>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-1">

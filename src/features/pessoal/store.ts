@@ -9,6 +9,7 @@ import type {
   WorkoutInput,
 } from "./types";
 import { uid } from "@/features/finance/utils";
+import { useActivity } from "@/features/activity/store";
 
 interface PessoalState {
   profile: Profile;
@@ -123,6 +124,12 @@ export const usePessoal = create<PessoalState>()(
           if (s.profile.weightGoal !== undefined) {
             checkGoalReached(entry.weight, s.profile.weightGoal, s.timeline, addEvent);
           }
+          useActivity.getState().log({
+            type: "weight",
+            action: "Peso registrado",
+            description: `${data.weight} kg`,
+            source: "pessoal-store",
+          });
           return { weights: next, timeline: events };
         }),
 
@@ -157,6 +164,12 @@ export const usePessoal = create<PessoalState>()(
               metadata: { count: total },
             });
           }
+          useActivity.getState().log({
+            type: "workout",
+            action: "Treino registrado",
+            description: data.name ?? data.activity,
+            source: "pessoal-store",
+          });
           return {
             workouts: [workout, ...s.workouts],
             timeline: events,

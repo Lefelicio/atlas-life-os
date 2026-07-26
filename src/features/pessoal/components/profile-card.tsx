@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { User, Cake, Ruler, Scale, Target, Pencil } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,12 +11,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { usePessoal } from "../store";
+import { useProfile } from "../hooks/use-profile";
+import { useWeights } from "../hooks/use-weights";
 import { ageLabel, calcBMI, bmiCategory, formatWeight } from "../utils";
 import { cn } from "@/lib/utils";
 
 export function ProfileCard() {
-  const { profile, weights, updateProfile } = usePessoal();
+  const { profile: dbProfile, updateProfile } = useProfile();
+  const { weights } = useWeights();
+  const profile = dbProfile;
   const [open, setOpen] = useState(false);
 
   const currentWt = weights.length > 0
@@ -98,21 +101,38 @@ function ProfileEditDialog({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   profile: { name: string; birthDate?: string; height?: number; weightGoal?: number };
-  onSave: (data: Partial<{ name: string; birthDate: string; height: number; weightGoal: number }>) => void;
+  onSave: (data: Partial<{ name: string; birthDate: string; height: number; weightGoal: number }>) => Promise<void>;
 }) {
   const [name, setName] = useState(profile.name);
   const [birthDate, setBirthDate] = useState(profile.birthDate ?? "");
   const [height, setHeight] = useState(profile.height ? String(profile.height) : "");
   const [weightGoal, setWeightGoal] = useState(profile.weightGoal ? String(profile.weightGoal) : "");
+  const [saving, setSaving] = useState(false);
 
-  const save = () => {
-    onSave({
-      name: name.trim(),
-      birthDate: birthDate || undefined,
-      height: height ? Number(height) : undefined,
-      weightGoal: weightGoal ? Number(weightGoal) : undefined,
-    });
-    onOpenChange(false);
+  useEffect(() => {
+    if (open) {
+      setName(profile.name);
+      setBirthDate(profile.birthDate ?? "");
+      setHeight(profile.height ? String(profile.height) : "");
+      setWeightGoal(profile.weightGoal ? String(profile.weightGoal) : "");
+    }
+  }, [open, profile]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await onSave({
+        name: name.trim(),
+        birthDate: birthDate || undefined,
+        height: height ? Number(height) : undefined,
+        weightGoal: weightGoal ? Number(weightGoal) : undefined,
+      });
+      onOpenChange(false);
+    } catch {
+      // toast handled in hook
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -143,7 +163,7 @@ function ProfileEditDialog({
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={save}>Salvar</Button>
+          <Button onClick={save} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/empty-state";
 
-import { useFinance } from "@/features/finance/store";
+import { useFinance } from "@/features/finance/hooks/use-finance";
 import {
   computePeriod,
   currency,
@@ -32,9 +32,13 @@ import { RecurrenceDialog } from "@/features/finance/components/recurrence-dialo
 import { RecurrenceCard } from "@/features/finance/components/recurrence-card";
 import { FavoriteDialog } from "@/features/finance/components/favorite-dialog";
 import { FavoriteCard } from "@/features/finance/components/favorite-card";
+import { triggerHelpOpen } from "@/features/help/help-events";
+
+type FinancasTab = "transactions" | "accounts" | "recurrences" | "favorites" | "categories";
 
 export const Route = createFileRoute("/_shell/financas")({
   component: FinancasPage,
+  validateSearch: (): { tab?: string } => ({}),
   head: () => ({
     meta: [
       { title: "Finanças — Atlas" },
@@ -49,12 +53,20 @@ export const Route = createFileRoute("/_shell/financas")({
 
 function FinancasPage() {
   const { transactions, accounts, tags, recurrences, favorites } = useFinance();
+  const { tab: tabParam } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const validTabs: FinancasTab[] = ["transactions", "accounts", "recurrences", "favorites", "categories"];
+  const initialTab = validTabs.includes(tabParam as FinancasTab) ? (tabParam as FinancasTab) : "transactions";
   const [period, setPeriod] = useState<PeriodKey>("30d");
   const [custom, setCustom] = useState({ from: todayISO(), to: todayISO() });
   const [query, setQuery] = useState("");
   const [txOpen, setTxOpen] = useState(false);
   const [recOpen, setRecOpen] = useState(false);
   const [favOpen, setFavOpen] = useState(false);
+
+  const onTabChange = (value: string) => {
+    navigate({ to: "/financas", search: { tab: value === "transactions" ? undefined : value }, replace: true });
+  };
 
   const range = useMemo(() => computePeriod(period, custom), [period, custom]);
 
@@ -89,11 +101,11 @@ function FinancasPage() {
         eyebrow="Módulo"
         title="Finanças"
         description="Cadastre lançamentos em segundos. Contas, categorias e saldos sempre atualizados."
+        onHelp={triggerHelpOpen}
         actions={
           <Button
             size="sm"
             onClick={() => setTxOpen(true)}
-            disabled={accounts.length === 0}
             className="shadow-elegant ring-1 ring-primary/40 hover:ring-primary/60"
           >
             <Plus className="h-4 w-4" /> Lançamento
@@ -156,7 +168,7 @@ function FinancasPage() {
         </section>
       )}
 
-      <Tabs defaultValue="transactions">
+      <Tabs value={initialTab} onValueChange={onTabChange}>
         <TabsList>
           <TabsTrigger value="transactions">Lançamentos</TabsTrigger>
           <TabsTrigger value="accounts">Contas</TabsTrigger>

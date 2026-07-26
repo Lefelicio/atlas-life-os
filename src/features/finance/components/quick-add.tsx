@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useFinance } from "../store";
+import { useFinance } from "../hooks/use-finance";
 import { currency, parseQuickAdd, todayISO } from "../utils";
 import { toast } from "sonner";
 
@@ -63,20 +63,24 @@ export function QuickAdd({ open, onOpenChange }: Props) {
   const canSave =
     parsed && (suggestion?.accountId || accountId) && parsed.amount > 0;
 
-  const submit = () => {
+  const submit = async () => {
     if (!parsed || !canSave) return;
-    addTransaction({
-      kind: parsed.kind,
-      date: todayISO(),
-      accountId: suggestion?.accountId ?? accountId,
-      categoryId: suggestion?.categoryId,
-      description: parsed.description,
-      amount: parsed.amount,
-    });
-    toast.success(
-      `${parsed.kind === "income" ? "Receita" : "Despesa"} registrada — ${currency(parsed.amount)}`,
-    );
-    onOpenChange(false);
+    try {
+      await addTransaction({
+        kind: parsed.kind,
+        date: todayISO(),
+        accountId: suggestion?.accountId ?? accountId,
+        categoryId: suggestion?.categoryId,
+        description: parsed.description,
+        amount: parsed.amount,
+      });
+      toast.success(
+        `${parsed.kind === "income" ? "Receita" : "Despesa"} registrada — ${currency(parsed.amount)}`,
+      );
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao salvar lançamento.");
+    }
   };
 
   return (

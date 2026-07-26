@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { useFinance } from "../store";
+import { useFinance } from "../hooks/use-finance";
 import { PALETTE } from "../utils";
 import type { Card as CardT, CardBrand } from "../types";
 import { cn } from "@/lib/utils";

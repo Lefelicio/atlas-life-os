@@ -14,6 +14,7 @@ import {
   Pause,
   Play,
   Trash2,
+  CalendarCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,11 +26,20 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 import type { Objective, ObjectiveCategory, ObjectiveTimelineEvent } from "../types";
-import { CATEGORY_LABELS, STATUS_LABELS, AUTO_METRIC_LABELS } from "../types";
-import { objectiveProgress, objectiveCurrentValue, objectiveTargetValue, formatMetricValue } from "../resolver";
+import { CATEGORY_LABELS, STATUS_LABELS, KIND_LABELS, FREQUENCY_LABELS } from "../types";
+import {
+  objectiveProgress,
+  objectiveCurrentValue,
+  objectiveTargetValue,
+  objectiveUnit,
+  formatMetricValue,
+} from "../resolver";
+import { useObjetivos } from "@/features/objetivos/hooks/use-objetivos";
+import { todayISO } from "@/features/finance/utils";
 
 const CATEGORY_ICONS: Record<ObjectiveCategory, LucideIcon> = {
   financeiro: Wallet,
@@ -48,6 +58,9 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   progress_milestone: TrendingUp,
   status_changed: Pause,
   custom: Circle,
+  period_reset: Flag,
+  checkin_done: CalendarCheck,
+  checkin_missed: Circle,
 };
 
 interface Props {
@@ -58,13 +71,33 @@ interface Props {
 }
 
 export function ObjectiveDetail({ objective, onClose, onSetStatus, onRemove }: Props) {
+  const { toggleCheckin, recordProgress } = useObjetivos();
+
   if (!objective) return null;
   const Icon = CATEGORY_ICONS[objective.category];
   const pct = objectiveProgress(objective);
   const cur = objectiveCurrentValue(objective);
   const tgt = objectiveTargetValue(objective);
-  const unit = objective.metric ? AUTO_METRIC_LABELS[objective.metric].split(" ")[0] : "";
+  const unit = objectiveUnit(objective);
   const events = [...objective.timeline].sort((a, b) => b.date.localeCompare(a.date));
+  const history = [...objective.history].sort((a, b) => b.period.localeCompare(a.period));
+
+  const kind = objective.kind ?? (objective.progressType === "auto" ? "auto" : "manual");
+  const isCheckinType = kind === "checkin" || kind === "recorrente";
+  const today = todayISO();
+  const hasCheckedInToday = (objective.checkinDates ?? []).includes(today);
+
+  const handleCheckin = () => {
+    // checkin dates are local-only (no DB column)
+  };
+
+  const handleProgressUpdate = () => {
+    const input = prompt("Novo valor atual:", String(cur ?? 0));
+    if (input !== null) {
+      const num = Number(input.replace(/[^\d.,-]/g, "").replace(",", "."));
+      if (!isNaN(num)) recordProgress(objective.id, num);
+    }
+  };
 
   return (
     <Dialog open={!!objective} onOpenChange={(o) => !o && onClose()}>
@@ -77,7 +110,7 @@ export function ObjectiveDetail({ objective, onClose, onSetStatus, onRemove }: P
             <div>
               <DialogTitle>{objective.title}</DialogTitle>
               <p className="text-xs text-muted-foreground">
-                {CATEGORY_LABELS[objective.category]} · {STATUS_LABELS[objective.status]}
+                {CATEGORY_LABELS[objective.category]} · {KIND_LABELS[kind]} · {STATUS_LABELS[objective.status]}
               </p>
             </div>
           </div>
@@ -98,16 +131,27 @@ export function ObjectiveDetail({ objective, onClose, onSetStatus, onRemove }: P
             <Progress value={pct} className="mt-2" />
           </div>
 
+          {isCheckinType && (
+            <Button
+              onClick={handleCheckin}
+              variant={hasCheckedInToday ? "secondary" : "default"}
+              className="w-full"
+            >
+              <CalendarCheck className="h-4 w-4" />
+              {hasCheckedInToday ? "Check-in feito hoje" : "Fazer check-in hoje"}
+            </Button>
+          )}
+
+          {(kind === "financeiro" || kind === "quantidade" || kind === "personalizado" || kind === "manual") && (
+            <Button onClick={handleProgressUpdate} variant="outline" className="w-full">
+              <TrendingUp className="h-4 w-4" /> Atualizar progresso
+            </Button>
+          )}
+
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">Métrica</p>
-              <p className="mt-0.5 font-medium">
-                {objective.progressType === "manual"
-                  ? "Manual"
-                  : objective.metric
-                    ? AUTO_METRIC_LABELS[objective.metric]
-                    : "—"}
-              </p>
+              <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">Tipo</p>
+              <p className="mt-0.5 font-medium">{KIND_LABELS[kind]}</p>
             </div>
             <div>
               <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">Prazo</p>
@@ -117,7 +161,45 @@ export function ObjectiveDetail({ objective, onClose, onSetStatus, onRemove }: P
                   : "Sem prazo"}
               </p>
             </div>
+            {kind === "recorrente" && objective.frequency && (
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">Frequência</p>
+                <p className="mt-0.5 font-medium">{FREQUENCY_LABELS[objective.frequency]}</p>
+              </div>
+            )}
+            {kind === "quantidade" && objective.unit && (
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">Unidade</p>
+                <p className="mt-0.5 font-medium">{objective.unit}</p>
+              </div>
+            )}
           </div>
+
+          {history.length > 0 && (
+            <div>
+              <p className="mb-2 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
+                Histórico mensal
+              </p>
+              <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                {history.map((h) => (
+                  <div
+                    key={h.id}
+                    className="flex items-center justify-between rounded-md border border-border/30 px-3 py-1.5 text-xs"
+                  >
+                    <span className="text-muted-foreground">{h.period}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="tabular-nums">
+                        {formatMetricValue(h.current, unit)} / {formatMetricValue(h.target, unit)}
+                      </span>
+                      <Badge variant="secondary" className="text-[10px]">
+                        {h.percentage}%
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <p className="mb-2 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">

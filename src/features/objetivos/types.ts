@@ -25,6 +25,7 @@ export const STATUS_LABELS: Record<ObjectiveStatus, string> = {
   paused: "Pausado",
 };
 
+// Legacy progress type (kept for backward compatibility with existing data)
 export type ProgressType = "auto" | "manual";
 
 export type AutoMetric =
@@ -53,6 +54,75 @@ export const AUTO_METRIC_AVAILABLE: Record<AutoMetric, boolean> = {
   tasks_done: false,
 };
 
+// ============ Sprint 7: Objective Types ============
+
+export type ObjectiveKind =
+  | "financeiro"
+  | "quantidade"
+  | "recorrente"
+  | "checkin"
+  | "personalizado"
+  | "auto"
+  | "manual"; // legacy
+
+export const KIND_LABELS: Record<ObjectiveKind, string> = {
+  financeiro: "Financeiro",
+  quantidade: "Quantidade",
+  recorrente: "Recorrente",
+  checkin: "Check-in",
+  personalizado: "Personalizado",
+  auto: "Automático",
+  manual: "Manual",
+};
+
+export const KIND_DESCRIPTIONS: Record<ObjectiveKind, string> = {
+  financeiro: "Acompanhe metas financeiras com valor e prazo.",
+  quantidade: "Conte coisas: livros, treinos, cursos, filmes.",
+  recorrente: "Crie hábitos com frequência e meta por período.",
+  checkin: "Registre apenas se fez ou não fez cada dia.",
+  personalizado: "Defina seus próprios campos e acompanhamento.",
+  auto: "Conecta automaticamente com métricas do Atlas.",
+  manual: "Progresso manual com valor atual e meta.",
+};
+
+export type RecurrenceFrequency = "diaria" | "semanal" | "mensal" | "anual";
+
+export const FREQUENCY_LABELS: Record<RecurrenceFrequency, string> = {
+  diaria: "Diária",
+  semanal: "Semanal",
+  mensal: "Mensal",
+  anual: "Anual",
+};
+
+export interface ObjectiveHistoryEntry {
+  id: string;
+  period: string; // "2026-07" for monthly, "2026-W29" for weekly, "2026" for yearly, "2026-07-23" for daily
+  current: number;
+  target: number;
+  percentage: number;
+  date: string;
+}
+
+export interface ObjectiveTemplate {
+  kind: ObjectiveKind;
+  title: string;
+  category: ObjectiveCategory;
+  description?: string;
+}
+
+export const OBJECTIVE_TEMPLATES: ObjectiveTemplate[] = [
+  { kind: "quantidade", title: "Ler livros", category: "estudos", description: "Quantos livros quer ler este ano." },
+  { kind: "quantidade", title: "Ganhar massa muscular", category: "saude", description: "Acompanhe treinos e progressão." },
+  { kind: "financeiro", title: "Criar reserva financeira", category: "financeiro", description: "Construa sua reserva de emergência." },
+  { kind: "recorrente", title: "Aprender inglês", category: "estudos", description: "Estudar inglês diariamente." },
+  { kind: "recorrente", title: "Aprender espanhol", category: "estudos", description: "Estudar espanhol diariamente." },
+  { kind: "financeiro", title: "Viajar", category: "viagem", description: "Economize para sua próxima viagem." },
+  { kind: "checkin", title: "Emagrecer", category: "saude", description: "Acompanhe hábitos para emagrecer." },
+  { kind: "recorrente", title: "Estudar", category: "estudos", description: "Rotina de estudos." },
+  { kind: "financeiro", title: "Economizar", category: "financeiro", description: "Reduza gastos desnecessários." },
+  { kind: "personalizado", title: "Outro", category: "outro", description: "Crie um objetivo totalmente personalizado." },
+];
+
 export interface ObjectiveTimelineEvent {
   id: string;
   type:
@@ -61,7 +131,10 @@ export interface ObjectiveTimelineEvent {
     | "completed"
     | "progress_milestone"
     | "status_changed"
-    | "custom";
+    | "custom"
+    | "period_reset"
+    | "checkin_done"
+    | "checkin_missed";
   title: string;
   description?: string;
   date: string;
@@ -75,11 +148,27 @@ export interface Objective {
   category: ObjectiveCategory;
   deadline?: string;
   icon?: string;
-  progressType: ProgressType;
+  progressType: ProgressType; // legacy
+  kind: ObjectiveKind;
   status: ObjectiveStatus;
   metric?: AutoMetric;
   manualCurrent?: number;
   manualTarget?: number;
+  // Financeiro
+  currentValue?: number;
+  targetValue?: number;
+  // Quantidade
+  unit?: string;
+  currentCount?: number;
+  targetCount?: number;
+  // Recorrente
+  frequency?: RecurrenceFrequency;
+  perPeriodTarget?: number;
+  checkinDates?: string[]; // ISO dates when checkin was done
+  // Check-in
+  // (uses checkinDates too)
+  // History
+  history: ObjectiveHistoryEntry[];
   timeline: ObjectiveTimelineEvent[];
   lastUpdated: string;
   createdAt: string;
@@ -87,5 +176,5 @@ export interface Objective {
 
 export type ObjectiveInput = Omit<
   Objective,
-  "id" | "createdAt" | "timeline" | "lastUpdated" | "status"
+  "id" | "createdAt" | "timeline" | "history" | "lastUpdated" | "status"
 > & { status?: ObjectiveStatus };

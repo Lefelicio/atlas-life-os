@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PageHeaderProps {
@@ -7,6 +8,8 @@ interface PageHeaderProps {
   description?: string;
   actions?: ReactNode;
   className?: string;
+  onHelp?: () => void;
+  helpLabel?: string;
 }
 
 export function PageHeader({
@@ -15,6 +18,8 @@ export function PageHeader({
   description,
   actions,
   className,
+  onHelp,
+  helpLabel = "Como funciona este módulo?",
 }: PageHeaderProps) {
   return (
     <div
@@ -37,6 +42,15 @@ export function PageHeader({
         )}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      {onHelp && (
+        <button
+          onClick={onHelp}
+          className="col-span-full -mt-2 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <HelpCircle className="h-3.5 w-3.5" />
+          {helpLabel}
+        </button>
+      )}
     </div>
   );
 }

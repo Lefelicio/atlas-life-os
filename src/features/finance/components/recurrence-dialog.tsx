@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useFinance } from "../store";
+import { useFinance } from "../hooks/use-finance";
 import { todayISO } from "../utils";
 import type { RecurrenceFrequency } from "../types";
 

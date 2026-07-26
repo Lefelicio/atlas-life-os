@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { useFinance } from "../store";
+import { useFinance } from "../hooks/use-finance";
 import { PALETTE } from "../utils";
 import type { Account } from "../types";
 import { cn } from "@/lib/utils";
@@ -36,22 +37,31 @@ export function AccountDialog({ open, onOpenChange, account }: Props) {
 
   const canSave = name.trim().length > 0;
 
-  const submit = () => {
-    if (!canSave) return;
-    if (account) {
-      updateAccount(account.id, {
-        name: name.trim(),
-        initialBalance: Number(initialBalance) || 0,
-        color,
-      });
-    } else {
-      addAccount({
-        name: name.trim(),
-        initialBalance: Number(initialBalance) || 0,
-        color,
-      });
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!canSave || saving) return;
+    setSaving(true);
+    try {
+      if (account) {
+        await updateAccount(account.id, {
+          name: name.trim(),
+          initialBalance: Number(initialBalance) || 0,
+          color,
+        });
+      } else {
+        await addAccount({
+          name: name.trim(),
+          initialBalance: Number(initialBalance) || 0,
+          color,
+        });
+      }
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao salvar conta.");
+    } finally {
+      setSaving(false);
     }
-    onOpenChange(false);
   };
 
   return (
@@ -101,8 +111,8 @@ export function AccountDialog({ open, onOpenChange, account }: Props) {
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={submit} disabled={!canSave}>
-            Salvar
+          <Button onClick={submit} disabled={!canSave || saving}>
+            {saving ? "Salvando..." : "Salvar"}
           </Button>
         </DialogFooter>
       </DialogContent>

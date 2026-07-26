@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { useFinance } from "@/features/finance/store";
+import { useFinance } from "@/features/finance/hooks/use-finance";
 import { CardDialog } from "@/features/finance/components/card-dialog";
 import { CardItem } from "@/features/finance/components/card-item";
 import { InstallmentPlanDialog } from "@/features/finance/components/installment-plan-dialog";

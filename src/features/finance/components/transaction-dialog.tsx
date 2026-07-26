@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useFinance } from "../store";
+import { useFinance } from "../hooks/use-finance";
 import { suggestFromHistory, todayISO } from "../utils";
 import type { TxKind } from "../types";
 import { TagsInput } from "./tags-input";
@@ -42,6 +43,7 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
   const [notes, setNotes] = useState("");
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [suggestionUsed, setSuggestionUsed] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -83,20 +85,27 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
     Number(amount) > 0 &&
     (kind === "transfer" ? toAccountId && toAccountId !== accountId : true);
 
-  const submit = () => {
-    if (!canSave) return;
-    addTransaction({
-      kind,
-      date,
-      accountId,
-      toAccountId: kind === "transfer" ? toAccountId : undefined,
-      categoryId: kind === "transfer" ? undefined : categoryId || undefined,
-      description: description || (kind === "transfer" ? "Transferência" : ""),
-      amount: Number(amount),
-      notes: notes || undefined,
-      tagIds: tagIds.length ? tagIds : undefined,
-    });
-    onOpenChange(false);
+  const submit = async () => {
+    if (!canSave || saving) return;
+    setSaving(true);
+    try {
+      await addTransaction({
+        kind,
+        date,
+        accountId,
+        toAccountId: kind === "transfer" ? toAccountId : undefined,
+        categoryId: kind === "transfer" ? undefined : categoryId || undefined,
+        description: description || (kind === "transfer" ? "Transferência" : ""),
+        amount: Number(amount),
+        notes: notes || undefined,
+        tagIds: tagIds.length ? tagIds : undefined,
+      });
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao salvar lançamento.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -140,7 +149,7 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
               </Label>
               <Select value={accountId} onValueChange={setAccountId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecionar" />
+                  <SelectValue placeholder={accounts.length === 0 ? "Nenhuma conta" : "Selecionar"} />
                 </SelectTrigger>
                 <SelectContent>
                   {accounts.map((a) => (
@@ -148,6 +157,11 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
                   ))}
                 </SelectContent>
               </Select>
+              {accounts.length === 0 && (
+                <p className="text-[11px] text-muted-foreground">
+                  Crie uma conta primeiro na aba "Contas".
+                </p>
+              )}
             </div>
           </div>
 
@@ -217,7 +231,9 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={submit} disabled={!canSave}>Salvar</Button>
+          <Button onClick={submit} disabled={!canSave || saving}>
+            {saving ? "Salvando..." : "Salvar"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

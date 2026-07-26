@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
 
-import { useObjetivos } from "@/features/objetivos/store";
+import { useObjetivos } from "@/features/objetivos/hooks/use-objetivos";
 import {
   CATEGORY_LABELS,
   STATUS_LABELS,
@@ -20,6 +20,7 @@ import { ObjectiveDialog } from "@/features/objetivos/components/objective-dialo
 import { ObjectiveCard } from "@/features/objetivos/components/objective-card";
 import { ObjectiveDetail } from "@/features/objetivos/components/objective-detail";
 import { ObjectiveStats } from "@/features/objetivos/components/objective-stats";
+import { triggerHelpOpen } from "@/features/help/help-events";
 
 export const Route = createFileRoute("/_shell/objetivos")({
   component: ObjetivosPage,
@@ -30,7 +31,7 @@ type StatusFilter = "all" | ObjectiveStatus;
 type CategoryFilter = "all" | ObjectiveCategory;
 
 function ObjetivosPage() {
-  const { objectives, addObjective, setStatus, removeObjective } = useObjetivos();
+  const { objectives, addObjective, setStatus, removeObjective, loading, error } = useObjetivos();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selected, setSelected] = useState<Objective | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -56,6 +57,7 @@ function ObjetivosPage() {
         eyebrow="Módulo"
         title="Objetivos"
         description="Acompanhe tudo o que você está construindo."
+        onHelp={triggerHelpOpen}
         actions={
           <Button size="sm" onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" /> Novo objetivo
@@ -92,7 +94,15 @@ function ObjetivosPage() {
         />
       </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="flex items-center justify-center py-20 text-sm text-muted-foreground">Carregando objetivos...</div>
+      ) : error ? (
+        <EmptyState
+          title="Erro ao carregar objetivos"
+          description="Verifique sua conexão e tente novamente."
+          icon={<Target className="h-4 w-4" />}
+        />
+      ) : filtered.length === 0 ? (
         <EmptyState
           title={objectives.length === 0 ? "Nenhum objetivo criado" : "Nenhum resultado"}
           description={

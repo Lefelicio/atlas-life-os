@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Plus, X, Pencil, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useFinance } from "../store";
+import { useFinance } from "../hooks/use-finance";
 import { PALETTE } from "../utils";
 import type { Category } from "../types";
 import { cn } from "@/lib/utils";
@@ -15,14 +16,18 @@ function CategoryList({ kind }: { kind: "income" | "expense" }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
 
-  const add = () => {
+  const add = async () => {
     if (!name.trim()) return;
-    addCategory({
-      name: name.trim(),
-      kind,
-      color: PALETTE[Math.floor(Math.random() * PALETTE.length)],
-    });
-    setName("");
+    try {
+      await addCategory({
+        name: name.trim(),
+        kind,
+        color: PALETTE[Math.floor(Math.random() * PALETTE.length)],
+      });
+      setName("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao criar categoria.");
+    }
   };
 
   return (

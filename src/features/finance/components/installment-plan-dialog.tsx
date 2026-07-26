@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useFinance } from "../store";
+import { useFinance } from "../hooks/use-finance";
 import { currency, todayISO } from "../utils";
 
 interface Props {

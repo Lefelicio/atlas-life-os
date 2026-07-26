@@ -1,4 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { useWeights } from "../hooks/use-weights";
+import { useProfile } from "../hooks/use-profile";
 import { usePessoal } from "../store";
 import {
   workoutsThisMonth,
@@ -10,13 +12,15 @@ import {
 } from "../utils";
 
 export function StatsPanel() {
-  const { workouts, weights, profile } = usePessoal();
+  const { weights } = useWeights();
+  const { profile } = useProfile();
+  const { workouts } = usePessoal();
 
   const thisMonth = workoutsThisMonth(workouts);
   const daysTrained = trainingDaysThisMonth(workouts);
   const streak = longestStreak(workouts);
   const curWt = currentWeight(weights);
-  const bmi = calcBMI(curWt, profile.height);
+  const bmi = calcBMI(curWt ?? undefined, profile.height);
 
   const stats = [
     { label: "Treinos este mês", value: String(thisMonth) },
