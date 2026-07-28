@@ -418,6 +418,48 @@ function PersonalReport() {
       {p.jiuJitsuCount > 0 && (
         <StatCard label="Treinos de Jiu-Jitsu" value={String(p.jiuJitsuCount)} hint="Este mês" />
       )}
+
+      {p.weightEvolution.total > 0 && (
+        <Card className="border-border/40 bg-card/40">
+          <CardContent className="p-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Evolução do peso</p>
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <StatItem label="Peso mínimo" value={p.weightEvolution.min !== null ? `${p.weightEvolution.min.toFixed(1)} kg` : "—"} />
+              <StatItem label="Peso máximo" value={p.weightEvolution.max !== null ? `${p.weightEvolution.max.toFixed(1)} kg` : "—"} />
+              <StatItem label="Registros" value={String(p.weightEvolution.total)} />
+              <StatItem label="Período" value={`${p.weightEvolution.monthly.length} meses`} />
+            </div>
+            <div className="mt-4 space-y-1.5">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Média mensal e variação</p>
+              {p.weightEvolution.monthly.map((m) => (
+                <div key={m.month} className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground capitalize">{m.month}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="tabular-nums text-muted-foreground">
+                      {m.avg > 0 ? `${m.avg.toFixed(1)} kg` : "—"}
+                    </span>
+                    {m.gain !== 0 && m.avg > 0 && (
+                      <span className={`flex items-center gap-0.5 text-xs tabular-nums ${m.gain < 0 ? "text-success" : "text-amber-500"}`}>
+                        {m.gain > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                        {m.gain > 0 ? "+" : ""}{m.gain.toFixed(1).replace(".", ",")} kg
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function StatItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="space-y-0.5">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-sm font-semibold tabular-nums">{value}</p>
     </div>
   );
 }

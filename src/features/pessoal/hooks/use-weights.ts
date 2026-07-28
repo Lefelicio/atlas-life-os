@@ -67,6 +67,20 @@ export function useWeights() {
     },
   });
 
+  const update = useMutation({
+    mutationFn: async (input: { id: string; date: string; weight: number; notes?: string }) => {
+      const { data, error } = await supabase
+        .from("pesos")
+        .update({ date: input.date, weight: input.weight, notes: input.notes ?? null })
+        .eq("id", input.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return toWeight(data as WeightRow);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("pesos").delete().eq("id", id);
@@ -80,6 +94,7 @@ export function useWeights() {
     loading: query.isLoading,
     error: query.error,
     addWeight: create.mutateAsync,
+    updateWeight: update.mutateAsync,
     removeWeight: remove.mutateAsync,
     refresh: () => qc.invalidateQueries({ queryKey: [KEY] }),
   };

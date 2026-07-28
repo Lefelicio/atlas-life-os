@@ -13,7 +13,7 @@ import { currency, sumIncome, sumExpense, inRange, computePeriod } from "@/featu
 import { monthEntries, sumEntries, yearEntries } from "@/features/patrimony/utils";
 import { computeGroupSummary, monthTransactions, healthMessages } from "@/features/planning/utils";
 import { GROUP_ORDER, GROUP_LABELS } from "@/features/planning/types";
-import { ACTIVITY_LABELS } from "@/features/pessoal/types";
+import { ACTIVITY_LABELS, type WeightEntry } from "@/features/pessoal/types";
 import { KIND_LABELS } from "@/features/objetivos/types";
 
 export interface MetricDelta {
@@ -202,6 +202,14 @@ export interface PersonalReport {
   muscleGroups: { group: string; count: number }[];
   jiuJitsuCount: number;
   activitiesBreakdown: { activity: string; count: number }[];
+  weightEvolution: WeightEvolution;
+}
+
+export interface WeightEvolution {
+  total: number;
+  min: number | null;
+  max: number | null;
+  monthly: { month: string; avg: number; gain: number }[];
 }
 
 export function usePersonalReport(): PersonalReport {
@@ -255,6 +263,8 @@ export function usePersonalReport(): PersonalReport {
 
     const weightHistory = sortedWeights.slice(-6).map((w) => ({ date: w.date, weight: w.weight }));
 
+    const weightEvolution = computeWeightEvolution(weights);
+
     return {
       currentWeight, prevWeight,
       weightDelta: currentWeight && prevWeight ? computeDelta(currentWeight, prevWeight) : null,
@@ -262,8 +272,32 @@ export function usePersonalReport(): PersonalReport {
       workoutsThisMonth, workoutsPrevMonth,
       workoutDelta: computeDelta(workoutsThisMonth, workoutsPrevMonth),
       daysTrained, muscleGroups, jiuJitsuCount, activitiesBreakdown,
+      weightEvolution,
     };
   }, [weights, workouts, profile]);
+}
+
+function computeWeightEvolution(weights: WeightEntry[]): WeightEvolution {
+  if (weights.length === 0) return { total: 0, min: null, max: null, monthly: [] };
+  const sorted = [...weights].sort((a, b) => a.date.localeCompare(b.date));
+  const min = Math.min(...sorted.map((w) => w.weight));
+  const max = Math.max(...sorted.map((w) => w.weight));
+  const now = new Date();
+  const monthly: { month: string; avg: number; gain: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = subMonths(now, i);
+    const mStart = format(startOfMonth(d), "yyyy-MM-dd");
+    const mEnd = format(endOfMonth(d), "yyyy-MM-dd");
+    const mWeights = sorted.filter((w) => w.date >= mStart && w.date <= mEnd);
+    if (mWeights.length === 0) {
+      monthly.push({ month: format(d, "MMM", { locale: ptBR }), avg: 0, gain: 0 });
+      continue;
+    }
+    const avg = Math.round((mWeights.reduce((s, w) => s + w.weight, 0) / mWeights.length) * 10) / 10;
+    const gain = Math.round((mWeights[mWeights.length - 1].weight - mWeights[0].weight) * 10) / 10;
+    monthly.push({ month: format(d, "MMM", { locale: ptBR }), avg, gain });
+  }
+  return { total: sorted.length, min, max, monthly };
 }
 
 export interface ObjectivesReport {

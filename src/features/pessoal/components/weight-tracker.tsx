@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   Line,
@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Plus, Scale, TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { Plus, Scale, TrendingDown, TrendingUp, Minus, Pencil, Trash2 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,12 +29,14 @@ import {
 import { useWeights } from "../hooks/use-weights";
 import { useProfile } from "../hooks/use-profile";
 import { calcBMI, currentWeight, initialWeight, weightDiffToGoal, formatWeight } from "../utils";
+import type { WeightEntry } from "../types";
 import { cn } from "@/lib/utils";
 
 export function WeightTracker() {
-  const { weights, addWeight, removeWeight } = useWeights();
+  const { weights, addWeight, updateWeight, removeWeight } = useWeights();
   const { profile } = useProfile();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<WeightEntry | null>(null);
 
   const cur = currentWeight(weights);
   const init = initialWeight(weights);
@@ -53,13 +55,41 @@ export function WeightTracker() {
     [weights, profile.height],
   );
 
+  const stats = useMemo(() => {
+    if (weights.length === 0) return null;
+    const sorted = [...weights].sort((a, b) => a.date.localeCompare(b.date));
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const max = Math.max(...weights.map((w) => w.weight));
+    const min = Math.min(...weights.map((w) => w.weight));
+    const diffFirst = Math.round((last.weight - first.weight) * 10) / 10;
+    const diffPrev = sorted.length > 1
+      ? Math.round((last.weight - sorted[sorted.length - 2].weight) * 10) / 10
+      : 0;
+    return { first, last, max, min, diffFirst, diffPrev };
+  }, [weights]);
+
+  const handleEdit = (entry: WeightEntry) => {
+    setEditing(entry);
+    setOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await removeWeight(id);
+      toast.success("Registro removido.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao remover registro.");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
           Saúde
         </p>
-        <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
+        <Button size="sm" variant="secondary" onClick={() => { setEditing(null); setOpen(true); }}>
           <Plus className="h-3.5 w-3.5" /> Registrar peso
         </Button>
       </div>
@@ -72,7 +102,7 @@ export function WeightTracker() {
             <p className="max-w-xs text-xs text-muted-foreground">
               Registre seu peso semanalmente para acompanhar sua evolução.
             </p>
-            <Button size="sm" onClick={() => setOpen(true)}>
+            <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}>
               <Plus className="h-3.5 w-3.5" /> Primeiro registro
             </Button>
           </CardContent>
@@ -89,6 +119,32 @@ export function WeightTracker() {
               icon={diff !== null && diff < 0 ? <TrendingDown className="h-3.5 w-3.5 text-success" /> : diff !== null && diff > 0 ? <TrendingUp className="h-3.5 w-3.5 text-amber-500" /> : <Minus className="h-3.5 w-3.5 text-muted-foreground" />}
             />
           </div>
+
+          {stats && (
+            <Card className="border-border/40 bg-card/40">
+              <CardContent className="p-4">
+                <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
+                  Estatísticas
+                </p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                  <StatItem label="Peso atual" value={formatWeight(stats.last.weight)} />
+                  <StatItem label="Primeiro peso" value={formatWeight(stats.first.weight)} />
+                  <StatItem label="Maior peso" value={formatWeight(stats.max)} />
+                  <StatItem label="Menor peso" value={formatWeight(stats.min)} />
+                  <StatItem
+                    label="Desde o 1º registro"
+                    value={stats.diffFirst === 0 ? "—" : `${stats.diffFirst > 0 ? "+" : ""}${formatWeight(Math.abs(stats.diffFirst))}`}
+                    tone={stats.diffFirst < 0 ? "success" : stats.diffFirst > 0 ? "warning" : "neutral"}
+                  />
+                  <StatItem
+                    label="Última variação"
+                    value={stats.diffPrev === 0 ? "—" : `${stats.diffPrev > 0 ? "+" : ""}${formatWeight(Math.abs(stats.diffPrev))}`}
+                    tone={stats.diffPrev < 0 ? "success" : stats.diffPrev > 0 ? "warning" : "neutral"}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {chartData.length >= 2 && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -127,12 +183,11 @@ export function WeightTracker() {
           <Card className="border-border/40 bg-card/40">
             <CardContent className="p-4">
               <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
-                Histórico
+                Histórico de Peso
               </p>
               <div className="space-y-1">
                 {[...weights]
                   .sort((a, b) => b.date.localeCompare(a.date))
-                  .slice(0, 8)
                   .map((w) => (
                     <div key={w.id} className="group flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-muted/30">
                       <span className="text-xs text-muted-foreground">
@@ -142,14 +197,18 @@ export function WeightTracker() {
                         <span className="text-sm font-medium tabular-nums">{formatWeight(w.weight)}</span>
                         {w.notes && <span className="hidden max-w-[200px] truncate text-xs text-muted-foreground sm:block">{w.notes}</span>}
                         <button
-                          onClick={() => {
-                            removeWeight(w.id).catch((err: unknown) =>
-                              toast.error(err instanceof Error ? err.message : "Erro ao remover peso."),
-                            );
-                          }}
-                          className="text-xs text-muted-foreground opacity-0 transition hover:text-destructive group-hover:opacity-100"
+                          onClick={() => handleEdit(w)}
+                          className="text-xs text-muted-foreground opacity-0 transition hover:text-foreground group-hover:opacity-100"
+                          aria-label="Editar"
                         >
-                          Remover
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(w.id)}
+                          className="text-xs text-muted-foreground opacity-0 transition hover:text-destructive group-hover:opacity-100"
+                          aria-label="Excluir"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     </div>
@@ -160,7 +219,13 @@ export function WeightTracker() {
         </>
       )}
 
-      <WeightDialog open={open} onOpenChange={setOpen} onAdd={addWeight} />
+      <WeightDialog
+        open={open}
+        onOpenChange={setOpen}
+        editing={editing}
+        onAdd={addWeight}
+        onUpdate={updateWeight}
+      />
     </div>
   );
 }
@@ -173,6 +238,16 @@ function MiniStat({ label, value, highlight, icon }: { label: string; value: str
         <p className={cn("text-sm font-semibold tabular-nums", highlight && "text-primary")}>{value}</p>
         {icon}
       </div>
+    </div>
+  );
+}
+
+function StatItem({ label, value, tone }: { label: string; value: string; tone?: "success" | "warning" | "neutral" }) {
+  const color = tone === "success" ? "text-success" : tone === "warning" ? "text-amber-500" : "text-foreground";
+  return (
+    <div className="space-y-0.5">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={cn("text-sm font-semibold tabular-nums", color)}>{value}</p>
     </div>
   );
 }
@@ -191,11 +266,15 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 function WeightDialog({
   open,
   onOpenChange,
+  editing,
   onAdd,
+  onUpdate,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  editing: WeightEntry | null;
   onAdd: (data: { date: string; weight: number; notes?: string }) => Promise<unknown>;
+  onUpdate: (data: { id: string; date: string; weight: number; notes?: string }) => Promise<unknown>;
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const [date, setDate] = useState(today);
@@ -203,17 +282,35 @@ function WeightDialog({
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (open) {
+      if (editing) {
+        setDate(editing.date);
+        setWeight(String(editing.weight));
+        setNotes(editing.notes ?? "");
+      } else {
+        setDate(today);
+        setWeight("");
+        setNotes("");
+      }
+    }
+  }, [open, editing, today]);
+
   const submit = async () => {
     const w = Number(weight);
     if (!date || !w || w <= 0 || saving) return;
     setSaving(true);
     try {
-      await onAdd({ date, weight: w, notes: notes || undefined });
-      setWeight("");
-      setNotes("");
+      if (editing) {
+        await onUpdate({ id: editing.id, date, weight: w, notes: notes || undefined });
+        toast.success("Registro atualizado.");
+      } else {
+        await onAdd({ date, weight: w, notes: notes || undefined });
+        toast.success("Peso registrado.");
+      }
       onOpenChange(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao registrar peso.");
+      toast.error(err instanceof Error ? err.message : "Erro ao salvar peso.");
     } finally {
       setSaving(false);
     }
@@ -223,11 +320,11 @@ function WeightDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Registrar peso</DialogTitle>
+          <DialogTitle>{editing ? "Editar registro" : "Registrar peso"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label className="text-xs">Data</Label>
+            <Label className="text-xs">Data da pesagem</Label>
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div>
