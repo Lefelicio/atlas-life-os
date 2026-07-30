@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,8 @@ import {
 } from "@/components/ui/select";
 import { useFinance } from "../hooks/use-finance";
 import { todayISO } from "../utils";
-import type { RecurrenceFrequency } from "../types";
+import type { RecurrenceFrequency, PaymentMethod } from "../types";
+import { RECURRENCE_FREQUENCY_LABELS, PAYMENT_METHOD_LABELS } from "../types";
 
 interface Props {
   open: boolean;
@@ -27,7 +28,7 @@ interface Props {
 }
 
 export function RecurrenceDialog({ open, onOpenChange }: Props) {
-  const { accounts, categories, addRecurrence, runRecurrences } = useFinance();
+  const { accounts, categories, cards, addRecurrence, runRecurrences } = useFinance();
   const [kind, setKind] = useState<"expense" | "income" | "transfer">("expense");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -38,6 +39,8 @@ export function RecurrenceDialog({ open, onOpenChange }: Props) {
   const [intervalDays, setIntervalDays] = useState("30");
   const [firstDate, setFirstDate] = useState(todayISO());
   const [endDate, setEndDate] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("debit");
+  const [cardId, setCardId] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -51,6 +54,8 @@ export function RecurrenceDialog({ open, onOpenChange }: Props) {
       setIntervalDays("30");
       setFirstDate(todayISO());
       setEndDate("");
+      setPaymentMethod("debit");
+      setCardId("");
     }
   }, [open, accounts]);
 
@@ -58,11 +63,17 @@ export function RecurrenceDialog({ open, onOpenChange }: Props) {
     (c) => c.kind === (kind === "income" ? "income" : "expense"),
   );
 
+  const availableCards = useMemo(
+    () => cards.filter((c) => c.active && (!accountId || c.accountId === accountId)),
+    [cards, accountId],
+  );
+
   const canSave =
     accountId &&
     Number(amount) > 0 &&
     description.trim() &&
-    (kind === "transfer" ? toAccountId && toAccountId !== accountId : true);
+    (kind === "transfer" ? toAccountId && toAccountId !== accountId : true) &&
+    (paymentMethod === "credit" ? !!cardId : true);
 
   const submit = () => {
     if (!canSave) return;
@@ -78,6 +89,8 @@ export function RecurrenceDialog({ open, onOpenChange }: Props) {
       firstDate,
       endDate: endDate || undefined,
       active: true,
+      paymentMethod: kind === "transfer" ? undefined : paymentMethod,
+      cardId: paymentMethod === "credit" && cardId ? cardId : undefined,
     });
     runRecurrences();
     onOpenChange(false);
@@ -129,25 +142,50 @@ export function RecurrenceDialog({ open, onOpenChange }: Props) {
               </Select>
             </div>
           ) : (
-            <div className="col-span-2">
-              <Label className="text-xs">Categoria</Label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
-                <SelectContent>
-                  {filteredCats.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            <>
+              <div className="col-span-2">
+                <Label className="text-xs">Forma de pagamento</Label>
+                <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((m) => (
+                      <SelectItem key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {paymentMethod === "credit" && (
+                <div className="col-span-2">
+                  <Label className="text-xs">Cartão</Label>
+                  <Select value={cardId} onValueChange={setCardId}>
+                    <SelectTrigger><SelectValue placeholder={availableCards.length === 0 ? "Nenhum cartão ativo" : "Selecionar"} /></SelectTrigger>
+                    <SelectContent>
+                      {availableCards.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="col-span-2">
+                <Label className="text-xs">Categoria</Label>
+                <Select value={categoryId} onValueChange={setCategoryId}>
+                  <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
+                  <SelectContent>
+                    {filteredCats.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
           )}
           <div>
             <Label className="text-xs">Frequência</Label>
             <Select value={frequency} onValueChange={(v) => setFrequency(v as RecurrenceFrequency)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="weekly">Semanal</SelectItem>
-                <SelectItem value="monthly">Mensal</SelectItem>
-                <SelectItem value="yearly">Anual</SelectItem>
-                <SelectItem value="custom">Personalizado</SelectItem>
+                {(Object.keys(RECURRENCE_FREQUENCY_LABELS) as RecurrenceFrequency[]).map((f) => (
+                  <SelectItem key={f} value={f}>{RECURRENCE_FREQUENCY_LABELS[f]}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

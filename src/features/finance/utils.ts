@@ -19,7 +19,9 @@ import { ptBR } from "date-fns/locale";
 import type {
   Account,
   Card,
+  Fatura,
   Installment,
+  PaymentMethod,
   PeriodKey,
   PeriodRange,
   Recurrence,
@@ -78,8 +80,12 @@ export function accountBalance(account: Account, txs: Transaction[]) {
   let bal = account.initialBalance;
   for (const t of txs) {
     if (t.kind === "income" && t.accountId === account.id) bal += t.amount;
-    else if (t.kind === "expense" && t.accountId === account.id) bal -= t.amount;
-    else if (t.kind === "transfer") {
+    else if (t.kind === "expense" && t.accountId === account.id) {
+      // Credit expenses do NOT reduce account balance until the invoice is paid.
+      // The invoice payment itself is a separate "Pagamento da Fatura" transaction.
+      if (t.paymentMethod === "credit" && !t.faturaId) continue;
+      bal -= t.amount;
+    } else if (t.kind === "transfer") {
       if (t.accountId === account.id) bal -= t.amount;
       if (t.toAccountId === account.id) bal += t.amount;
     }
@@ -132,10 +138,20 @@ export function cardUsage(card: Card, installments: Installment[], plans: { id: 
 function nextDate(iso: string, r: Recurrence): string {
   const d = parseISO(iso);
   switch (r.frequency) {
+    case "daily":
+      return format(addDays(d, 1), "yyyy-MM-dd");
     case "weekly":
       return format(addWeeks(d, 1), "yyyy-MM-dd");
+    case "biweekly":
+      return format(addDays(d, 15), "yyyy-MM-dd");
     case "monthly":
       return format(addMonths(d, 1), "yyyy-MM-dd");
+    case "bimonthly":
+      return format(addMonths(d, 2), "yyyy-MM-dd");
+    case "quarterly":
+      return format(addMonths(d, 3), "yyyy-MM-dd");
+    case "semiannual":
+      return format(addMonths(d, 6), "yyyy-MM-dd");
     case "yearly":
       return format(addYears(d, 1), "yyyy-MM-dd");
     case "custom":
@@ -172,6 +188,8 @@ export function materializeRecurrences(
         amount: r.amount,
         tagIds: r.tagIds,
         recurrenceId: r.id,
+        paymentMethod: r.paymentMethod,
+        cardId: r.cardId,
         createdAt: nowIso,
       });
       updates[r.id] = cursor;
@@ -323,4 +341,130 @@ export function monthInstallments(
     const d = parseISO(i.dueDate);
     return d.getFullYear() === y && d.getMonth() === m && i.status !== "canceled";
   });
+}
+
+// ============================================================
+// Credit card invoice (fatura) helpers
+// ============================================================
+
+/**
+ * Compute the competence month for a credit purchase.
+ * If the purchase date is before the closing day, it goes on the current month's invoice.
+ * If it's on or after the closing day, it rolls to the next month's invoice.
+ */
+export function computeCompetenceMonth(date: string, closingDay: number): string {
+  const d = parseISO(date);
+  const day = d.getDate();
+  if (day >= closingDay) {
+    return format(addMonths(d, 1), "yyyy-MM");
+  }
+  return format(d, "yyyy-MM");
+}
+
+/**
+ * Compute the due date for a given competence month and due day.
+ */
+export function computeFaturaDueDate(competenceMonth: string, dueDay: number): string {
+  const [year, month] = competenceMonth.split("-").map(Number);
+  const d = new Date(year, month, dueDay);
+  return format(d, "yyyy-MM-dd");
+}
+
+/**
+ * Compute the closing date for a competence month.
+ */
+export function computeFaturaClosingDate(competenceMonth: string, closingDay: number): string {
+  const [year, month] = competenceMonth.split("-").map(Number);
+  const d = new Date(year, month - 1, closingDay);
+  return format(d, "yyyy-MM-dd");
+}
+
+/**
+ * Format a competence month as a readable label, e.g. "2026-07" -> "Julho 2026".
+ */
+export function formatCompetenceMonth(competenceMonth: string): string {
+  const [year, month] = competenceMonth.split("-").map(Number);
+  const d = new Date(year, month - 1, 1);
+  return format(d, "MMMM 'de' yyyy", { locale: ptBR });
+}
+
+/**
+ * Group credit transactions by competence month for a given card.
+ * Returns sorted list of { month, transactions, total } from newest to oldest.
+ */
+export function groupCreditByCompetence(
+  transactions: Transaction[],
+  cardId: string,
+): { month: string; transactions: Transaction[]; total: number }[] {
+  const cardTxs = transactions.filter(
+    (t) => t.paymentMethod === "credit" && t.cardId === cardId && t.kind === "expense",
+  );
+  const map = new Map<string, Transaction[]>();
+  for (const t of cardTxs) {
+    const month = t.competenceMonth ?? format(parseISO(t.date), "yyyy-MM");
+    if (!map.has(month)) map.set(month, []);
+    map.get(month)!.push(t);
+  }
+  return Array.from(map.entries())
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([month, txs]) => ({
+      month,
+      transactions: txs.sort((a, b) => b.date.localeCompare(a.date)),
+      total: txs.reduce((s, t) => s + t.amount, 0),
+    }));
+}
+
+/**
+ * Compute the total open (unpaid) invoices across all cards.
+ */
+export function totalOpenFaturas(faturas: Fatura[]): number {
+  return faturas
+    .filter((f) => f.status === "open")
+    .reduce((s, f) => s + f.amount, 0);
+}
+
+/**
+ * Compute the total available credit limit across all active cards.
+ */
+export function totalAvailableLimit(cards: Card[], transactions: Transaction[]): number {
+  let used = 0;
+  let limit = 0;
+  for (const c of cards) {
+    if (!c.active) continue;
+    limit += c.limit;
+    const cardTxs = transactions.filter(
+      (t) => t.paymentMethod === "credit" && t.cardId === c.id && t.kind === "expense" && !t.faturaId,
+    );
+    used += cardTxs.reduce((s, t) => s + t.amount, 0);
+  }
+  return Math.max(0, limit - used);
+}
+
+/**
+ * Find the next upcoming invoice due date across all cards.
+ */
+export function nextFaturaDueDate(
+  cards: Card[],
+  faturas: Fatura[],
+): { card: Card; dueDate: string } | null {
+  const today = new Date();
+  const open = faturas.filter((f) => f.status === "open" && f.dueDate);
+  if (open.length === 0) {
+    // Compute from card due days
+    const upcoming = cards
+      .filter((c) => c.active)
+      .map((c) => {
+        const d = new Date(today.getFullYear(), today.getMonth(), c.dueDay);
+        const next = isBefore(d, today) ? addMonths(d, 1) : d;
+        return { card: c, dueDate: format(next, "yyyy-MM-dd") };
+      })
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    return upcoming[0] ?? null;
+  }
+  const sorted = open
+    .filter((f) => isAfter(parseISO(f.dueDate!), today))
+    .sort((a, b) => a.dueDate!.localeCompare(b.dueDate!));
+  if (sorted.length === 0) return null;
+  const card = cards.find((c) => c.id === sorted[0].cardId);
+  return card ? { card, dueDate: sorted[0].dueDate! } : null;
 }

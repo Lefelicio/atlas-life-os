@@ -5,7 +5,8 @@ import {
 } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useActivity } from "@/features/activity/store";
-import type { Transaction, TxKind } from "../types";
+import type { Transaction, TxKind, PaymentMethod } from "../types";
+import { computeCompetenceMonth } from "../utils";
 
 const KEY = "transactions";
 
@@ -18,6 +19,10 @@ export interface TransactionRow {
   description: string;
   amount: number;
   notes: string | null;
+  payment_method: string | null;
+  card_id: string | null;
+  fatura_id: string | null;
+  competence_month: string | null;
   created_at: string;
 }
 
@@ -31,6 +36,10 @@ function toTransaction(r: TransactionRow): Transaction {
     description: r.description,
     amount: Number(r.amount) ?? 0,
     notes: r.notes ?? undefined,
+    paymentMethod: (r.payment_method ?? "debit") as PaymentMethod,
+    cardId: r.card_id ?? undefined,
+    faturaId: r.fatura_id ?? undefined,
+    competenceMonth: r.competence_month ?? undefined,
     createdAt: r.created_at,
   };
 }
@@ -44,6 +53,10 @@ function fromTransaction(t: Omit<Transaction, "id" | "createdAt">): Record<strin
     description: t.description,
     amount: t.amount,
     notes: t.notes ?? null,
+    payment_method: t.paymentMethod ?? "debit",
+    card_id: t.cardId ?? null,
+    fatura_id: t.faturaId ?? null,
+    competence_month: t.competenceMonth ?? null,
   };
 }
 
@@ -65,9 +78,17 @@ export function useTransactions() {
 
   const create = useMutation({
     mutationFn: async (input: Omit<Transaction, "id" | "createdAt">) => {
+      // Auto-compute competence month for credit transactions
+      const enriched = { ...input };
+      if (input.paymentMethod === "credit" && input.cardId && !input.competenceMonth) {
+        // We need the card's closing day, but we don't have it here.
+        // The competence month will be set by the caller or computed later.
+        // For now, default to the transaction's month.
+        enriched.competenceMonth = input.date.slice(0, 7);
+      }
       const { data, error } = await supabase
         .from("transacoes")
-        .insert(fromTransaction(input))
+        .insert(fromTransaction(enriched))
         .select()
         .single();
       if (error) throw error;
@@ -75,6 +96,7 @@ export function useTransactions() {
     },
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: [KEY] });
+      qc.invalidateQueries({ queryKey: ["faturas"] });
       useActivity.getState().log({
         type: "transaction",
         action:
@@ -99,10 +121,17 @@ export function useTransactions() {
       if (data.description !== undefined) patch.description = data.description;
       if (data.amount !== undefined) patch.amount = data.amount;
       if (data.notes !== undefined) patch.notes = data.notes ?? null;
+      if (data.paymentMethod !== undefined) patch.payment_method = data.paymentMethod;
+      if (data.cardId !== undefined) patch.card_id = data.cardId ?? null;
+      if (data.faturaId !== undefined) patch.fatura_id = data.faturaId ?? null;
+      if (data.competenceMonth !== undefined) patch.competence_month = data.competenceMonth;
       const { error } = await supabase.from("transacoes").update(patch).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY] });
+      qc.invalidateQueries({ queryKey: ["faturas"] });
+    },
   });
 
   const remove = useMutation({
@@ -110,7 +139,10 @@ export function useTransactions() {
       const { error } = await supabase.from("transacoes").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY] });
+      qc.invalidateQueries({ queryKey: ["faturas"] });
+    },
   });
 
   return {

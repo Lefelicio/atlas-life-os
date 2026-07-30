@@ -10,6 +10,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   History,
+  FileText,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,6 +43,7 @@ import {
   ATLAS_DB,
   ATLAS_DB_VERSION,
 } from "@/features/backup/backup";
+import { exportPdfReport } from "@/features/reports/pdf-export";
 import { triggerHelpOpen } from "@/features/help/help-events";
 
 export const Route = createFileRoute("/_shell/configuracoes")({
@@ -75,10 +78,23 @@ function ConfiguracoesPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [importPreview, setImportPreview] = useState<{ raw: string; info: ImportResult } | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const handleExport = () => {
     downloadBackup();
     toast.success("Backup exportado com sucesso.");
+  };
+
+  const handlePdfExport = async () => {
+    setPdfLoading(true);
+    try {
+      await exportPdfReport();
+      toast.success("Relatório PDF gerado. Use a janela de impressão para salvar como PDF.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao gerar relatório PDF.");
+    } finally {
+      setPdfLoading(false);
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -172,16 +188,29 @@ function ConfiguracoesPage() {
           <Card className="border-border/40 bg-card/40">
             <CardContent className="space-y-4 p-6">
               <div>
-                <h3 className="text-sm font-semibold">Backup dos Dados</h3>
+                <h3 className="text-sm font-semibold">Backup e Exportação</h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Exporte todos os seus dados em um arquivo JSON ou restaure a partir de um backup.
+                  Exporte seus dados em JSON (backup completo), gere um relatório PDF, ou restaure a partir de um backup.
                 </p>
               </div>
               <Separator />
               <div className="flex flex-wrap gap-3">
                 <Button onClick={handleExport} className="gap-2">
                   <Download className="h-4 w-4" />
-                  Exportar Backup
+                  Exportar JSON
+                </Button>
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={handlePdfExport}
+                  disabled={pdfLoading}
+                >
+                  {pdfLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText className="h-4 w-4" />
+                  )}
+                  {pdfLoading ? "Gerando..." : "Exportar Relatório PDF"}
                 </Button>
                 <Button
                   variant="outline"
@@ -189,7 +218,7 @@ function ConfiguracoesPage() {
                   onClick={() => fileRef.current?.click()}
                 >
                   <Upload className="h-4 w-4" />
-                  Importar Backup
+                  Importar JSON
                 </Button>
                 <input
                   ref={fileRef}

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus, Search, Star, Repeat } from "lucide-react";
+import { Plus, Search, Star, Repeat, Filter } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,15 @@ import {
   sumIncome,
   todayISO,
 } from "@/features/finance/utils";
-import type { PeriodKey } from "@/features/finance/types";
+import type { PeriodKey, PaymentMethod } from "@/features/finance/types";
+import { PAYMENT_METHOD_LABELS } from "@/features/finance/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PeriodFilter } from "@/features/finance/components/period-filter";
 import { TransactionsList } from "@/features/finance/components/transactions-list";
 import { TransactionDialog } from "@/features/finance/components/transaction-dialog";
@@ -52,7 +60,7 @@ export const Route = createFileRoute("/_shell/financas")({
 });
 
 function FinancasPage() {
-  const { transactions, accounts, tags, recurrences, favorites } = useFinance();
+  const { transactions, accounts, tags, recurrences, favorites, cards, categories } = useFinance();
   const { tab: tabParam } = Route.useSearch();
   const navigate = Route.useNavigate();
   const validTabs: FinancasTab[] = ["transactions", "accounts", "recurrences", "favorites", "categories"];
@@ -63,6 +71,9 @@ function FinancasPage() {
   const [txOpen, setTxOpen] = useState(false);
   const [recOpen, setRecOpen] = useState(false);
   const [favOpen, setFavOpen] = useState(false);
+  const [filterMethod, setFilterMethod] = useState<PaymentMethod | "all">("all");
+  const [filterCardId, setFilterCardId] = useState<string>("all");
+  const [filterAccountId, setFilterAccountId] = useState<string>("all");
 
   const onTabChange = (value: string) => {
     navigate({ to: "/financas", search: { tab: value === "transactions" ? undefined : value }, replace: true });
@@ -80,6 +91,9 @@ function FinancasPage() {
 
     return transactions
       .filter((t) => inRange(t.date, range))
+      .filter((t) => filterMethod === "all" ? true : (t.paymentMethod ?? "debit") === filterMethod)
+      .filter((t) => filterCardId === "all" ? true : t.cardId === filterCardId)
+      .filter((t) => filterAccountId === "all" ? true : t.accountId === filterAccountId)
       .filter((t) => {
         if (!q) return true;
         if (matchedTagIds) return t.tagIds?.some((id) => matchedTagIds.includes(id));
@@ -89,7 +103,7 @@ function FinancasPage() {
           String(t.amount).includes(q)
         );
       });
-  }, [transactions, range, query, tags]);
+  }, [transactions, range, query, tags, filterMethod, filterCardId, filterAccountId]);
 
   const income = sumIncome(filtered);
   const expense = sumExpense(filtered);
@@ -123,12 +137,44 @@ function FinancasPage() {
             className="h-9 pl-9"
           />
         </div>
-        <PeriodFilter
-          value={period}
-          onChange={setPeriod}
-          custom={custom}
-          onCustomChange={setCustom}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={filterMethod} onValueChange={(v) => setFilterMethod(v as PaymentMethod | "all")}>
+            <SelectTrigger className="h-9 w-[120px]"><SelectValue placeholder="Forma de pagamento" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as formas</SelectItem>
+              {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((m) => (
+                <SelectItem key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {cards.length > 0 && (
+            <Select value={filterCardId} onValueChange={setFilterCardId}>
+              <SelectTrigger className="h-9 w-[120px]"><SelectValue placeholder="Cartão" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os cartões</SelectItem>
+                {cards.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={filterAccountId} onValueChange={setFilterAccountId}>
+            <SelectTrigger className="h-9 w-[120px]"><SelectValue placeholder="Conta" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as contas</SelectItem>
+              {accounts.map((a) => (
+                <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <PeriodFilter
+            value={period}
+            onChange={setPeriod}
+            custom={custom}
+            onCustomChange={setCustom}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

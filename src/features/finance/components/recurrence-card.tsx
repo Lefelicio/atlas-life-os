@@ -7,8 +7,13 @@ import { currency, formatShortDate } from "../utils";
 import type { Recurrence } from "../types";
 
 const FREQ_LABEL: Record<Recurrence["frequency"], string> = {
+  daily: "Diário",
   weekly: "Semanal",
+  biweekly: "Quinzenal",
   monthly: "Mensal",
+  bimonthly: "Bimestral",
+  quarterly: "Trimestral",
+  semiannual: "Semestral",
   yearly: "Anual",
   custom: "Personalizado",
 };

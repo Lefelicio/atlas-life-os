@@ -1,5 +1,15 @@
 export type TxKind = "income" | "expense" | "transfer";
 
+export type PaymentMethod = "debit" | "credit" | "pix" | "cash" | "boleto";
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  debit: "Débito",
+  credit: "Crédito",
+  pix: "PIX",
+  cash: "Dinheiro",
+  boleto: "Boleto",
+};
+
 export interface Account {
   id: string;
   name: string;
@@ -35,6 +45,9 @@ export interface Transaction {
   cardId?: string; // optional link to card (for cash-back tracking, receipts, etc.)
   installmentPlanId?: string; // when this tx was materialized from a plan
   recurrenceId?: string; // when materialized from a recurring rule
+  paymentMethod?: PaymentMethod; // defaults to "debit" for old transactions
+  faturaId?: string; // when belongs to a paid invoice
+  competenceMonth?: string; // e.g. "2026-07" for credit billing cycle
   createdAt: string;
 }
 
@@ -57,6 +70,7 @@ export interface Card {
   dueDay: number; // 1..31
   active: boolean;
   notes?: string;
+  accountId?: string; // links card to its parent account
   createdAt: string;
 }
 
@@ -83,7 +97,28 @@ export interface Installment {
   status: InstallmentStatus;
 }
 
-export type RecurrenceFrequency = "weekly" | "monthly" | "yearly" | "custom";
+export type RecurrenceFrequency =
+  | "daily"
+  | "weekly"
+  | "biweekly"
+  | "monthly"
+  | "bimonthly"
+  | "quarterly"
+  | "semiannual"
+  | "yearly"
+  | "custom";
+
+export const RECURRENCE_FREQUENCY_LABELS: Record<RecurrenceFrequency, string> = {
+  daily: "Diário",
+  weekly: "Semanal",
+  biweekly: "Quinzenal",
+  monthly: "Mensal",
+  bimonthly: "Bimestral",
+  quarterly: "Trimestral",
+  semiannual: "Semestral",
+  yearly: "Anual",
+  custom: "Personalizado",
+};
 
 export interface Recurrence {
   id: string;
@@ -100,6 +135,8 @@ export interface Recurrence {
   endDate?: string; // ISO optional
   lastRun?: string; // ISO date already materialized
   active: boolean;
+  paymentMethod?: PaymentMethod;
+  cardId?: string;
   createdAt: string;
 }
 
@@ -113,6 +150,22 @@ export interface Favorite {
   amount?: number;
   description?: string;
   tagIds?: string[];
+  createdAt: string;
+}
+
+export type FaturaStatus = "open" | "paid";
+
+export interface Fatura {
+  id: string;
+  cardId: string;
+  competenceMonth: string; // "2026-07"
+  dueDate?: string;
+  closingDate?: string;
+  amount: number;
+  status: FaturaStatus;
+  paidAt?: string;
+  paidFromAccountId?: string;
+  paidAmount: number;
   createdAt: string;
 }
 

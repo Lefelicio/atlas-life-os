@@ -21,8 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useFinance } from "../hooks/use-finance";
-import { suggestFromHistory, todayISO } from "../utils";
-import type { TxKind } from "../types";
+import { suggestFromHistory, todayISO, computeCompetenceMonth } from "../utils";
+import type { TxKind, PaymentMethod } from "../types";
+import { PAYMENT_METHOD_LABELS } from "../types";
 import { TagsInput } from "./tags-input";
 
 interface Props {
@@ -32,7 +33,7 @@ interface Props {
 }
 
 export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" }: Props) {
-  const { accounts, categories, transactions, addTransaction } = useFinance();
+  const { accounts, categories, transactions, cards, addTransaction } = useFinance();
   const [kind, setKind] = useState<TxKind>(defaultKind);
   const [date, setDate] = useState(todayISO());
   const [accountId, setAccountId] = useState("");
@@ -42,6 +43,8 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [tagIds, setTagIds] = useState<string[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("debit");
+  const [cardId, setCardId] = useState("");
   const [suggestionUsed, setSuggestionUsed] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -56,12 +59,19 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
       setAmount("");
       setNotes("");
       setTagIds([]);
+      setPaymentMethod("debit");
+      setCardId("");
       setSuggestionUsed(false);
     }
   }, [open, defaultKind, accounts]);
 
   const filteredCats = categories.filter(
     (c) => c.kind === (kind === "income" ? "income" : "expense"),
+  );
+
+  const availableCards = useMemo(
+    () => cards.filter((c) => c.active && (!accountId || c.accountId === accountId)),
+    [cards, accountId],
   );
 
   // Smart history suggestion — based on description
@@ -83,12 +93,20 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
   const canSave =
     accountId &&
     Number(amount) > 0 &&
-    (kind === "transfer" ? toAccountId && toAccountId !== accountId : true);
+    (kind === "transfer" ? toAccountId && toAccountId !== accountId : true) &&
+    (paymentMethod === "credit" ? !!cardId : true);
 
   const submit = async () => {
     if (!canSave || saving) return;
     setSaving(true);
     try {
+      const selectedCard = paymentMethod === "credit" && cardId
+        ? cards.find((c) => c.id === cardId)
+        : null;
+      const competenceMonth = selectedCard && paymentMethod === "credit"
+        ? computeCompetenceMonth(date, selectedCard.closingDay)
+        : undefined;
+
       await addTransaction({
         kind,
         date,
@@ -99,6 +117,9 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
         amount: Number(amount),
         notes: notes || undefined,
         tagIds: tagIds.length ? tagIds : undefined,
+        paymentMethod: kind === "transfer" ? undefined : paymentMethod,
+        cardId: paymentMethod === "credit" && cardId ? cardId : undefined,
+        competenceMonth,
       });
       onOpenChange(false);
     } catch (err) {
@@ -182,19 +203,56 @@ export function TransactionDialog({ open, onOpenChange, defaultKind = "expense" 
               </Select>
             </div>
           ) : (
-            <div>
-              <Label className="text-xs">Categoria</Label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecionar" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredCats.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <>
+              <div>
+                <Label className="text-xs">Forma de pagamento</Label>
+                <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((m) => (
+                      <SelectItem key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {paymentMethod === "credit" && (
+                <div>
+                  <Label className="text-xs">Cartão</Label>
+                  <Select value={cardId} onValueChange={setCardId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={availableCards.length === 0 ? "Nenhum cartão ativo" : "Selecionar"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCards.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {availableCards.length === 0 && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Cadastre um cartão na conta para usar crédito.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <Label className="text-xs">Categoria</Label>
+                <Select value={categoryId} onValueChange={setCategoryId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredCats.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
           )}
 
           <div>

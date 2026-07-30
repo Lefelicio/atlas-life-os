@@ -3,13 +3,17 @@ import { useAccounts } from "./use-accounts";
 import { useCategories } from "./use-categories";
 import { useTransactions } from "./use-transactions";
 import { useTags } from "./use-tags";
-import type { Account, Category, Transaction, Tag } from "../types";
+import { useCards } from "./use-cards";
+import { useFaturas } from "./use-faturas";
+import type { Account, Card, Category, Fatura, Transaction, Tag } from "../types";
 
 export function useFinanceData() {
   const accountsHook = useAccounts();
   const categoriesHook = useCategories();
   const transactionsHook = useTransactions();
   const tagsHook = useTags();
+  const cardsHook = useCards();
+  const faturasHook = useFaturas();
 
   const addAccount = useCallback(
     async (data: Omit<Account, "id" | "createdAt">) => {
@@ -95,13 +99,36 @@ export function useFinanceData() {
     [tagsHook],
   );
 
+  const addCard = useCallback(
+    async (data: Omit<Card, "id" | "createdAt">) => {
+      await cardsHook.create(data);
+    },
+    [cardsHook],
+  );
+
+  const updateCard = useCallback(
+    async (id: string, data: Partial<Card>) => {
+      await cardsHook.update({ id, data });
+    },
+    [cardsHook],
+  );
+
+  const removeCard = useCallback(
+    async (id: string) => {
+      await cardsHook.delete(id);
+    },
+    [cardsHook],
+  );
+
   return {
     accounts: accountsHook.accounts,
     categories: categoriesHook.categories,
     transactions: transactionsHook.transactions,
     tags: tagsHook.tags,
-    loading: accountsHook.loading || categoriesHook.loading || transactionsHook.loading || tagsHook.loading,
-    error: accountsHook.error || categoriesHook.error || transactionsHook.error || tagsHook.error,
+    cards: cardsHook.cards,
+    faturas: faturasHook.faturas,
+    loading: accountsHook.loading || categoriesHook.loading || transactionsHook.loading || tagsHook.loading || cardsHook.loading || faturasHook.loading,
+    error: accountsHook.error || categoriesHook.error || transactionsHook.error || tagsHook.error || cardsHook.error || faturasHook.error,
 
     addAccount,
     updateAccount,
@@ -115,12 +142,19 @@ export function useFinanceData() {
     addTag,
     updateTag,
     removeTag,
+    addCard,
+    updateCard,
+    removeCard,
+    payFatura: faturasHook.payFatura,
+    upsertFatura: faturasHook.upsertFatura,
 
     refreshAll: () => {
       accountsHook.refresh();
       categoriesHook.refresh();
       transactionsHook.refresh();
       tagsHook.refresh();
+      cardsHook.refresh();
+      faturasHook.refresh();
     },
   };
 }

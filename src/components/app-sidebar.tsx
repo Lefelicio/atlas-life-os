@@ -16,6 +16,7 @@ import {
   Landmark,
   Tags,
   Info,
+  ReceiptText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -49,6 +50,7 @@ const FINANCAS_CHILDREN: SubItem[] = [
   { title: "Lançamentos", url: "/financas", icon: ListChecks },
   { title: "Contas", url: "/financas?tab=accounts", icon: Landmark },
   { title: "Cartões", url: "/cartoes", icon: CreditCard },
+  { title: "Faturas", url: "/faturas", icon: ReceiptText },
   { title: "Metas", url: "/metas", icon: Target },
   { title: "Planejamento", url: "/planejamento", icon: PieChart },
   { title: "Patrimônio", url: "/patrimonio", icon: TrendingUp },

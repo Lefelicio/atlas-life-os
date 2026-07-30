@@ -6,9 +6,8 @@ import { useTransactions } from "./use-transactions";
 
 /**
  * Combined hook that provides both Supabase-backed data (accounts, categories,
- * transactions) and local-only state (cards, tags, installments, recurrences,
- * favorites) in a single object, matching the shape that existing components
- * expect from the old useFinance() store.
+ * transactions, cards, faturas, tags) and local-only state (installments,
+ * recurrences, favorites) in a single object.
  */
 export function useFinance() {
   const local = useFinanceLocal();
@@ -37,6 +36,9 @@ export function useFinance() {
     accounts: data.accounts,
     categories: data.categories,
     transactions: data.transactions,
+    tags: data.tags,
+    cards: data.cards,
+    faturas: data.faturas,
     loading: data.loading,
     error: data.error,
 
@@ -49,22 +51,22 @@ export function useFinance() {
     addTransaction: data.addTransaction,
     updateTransaction: data.updateTransaction,
     removeTransaction: data.removeTransaction,
+    addTag: data.addTag,
+    updateTag: data.updateTag,
+    removeTag: data.removeTag,
+    addCard: data.addCard,
+    updateCard: data.updateCard,
+    removeCard: data.removeCard,
+    payFatura: data.payFatura,
+    upsertFatura: data.upsertFatura,
 
-    // Supabase-backed (including tags)
-    tags: data.tags,
-    cards: local.cards,
+    // Local-only (installments, recurrences, favorites)
     plans: local.plans,
     installments: local.installments,
     recurrences: local.recurrences,
     favorites: local.favorites,
     hydrated: local.hydrated,
 
-    addTag: data.addTag,
-    updateTag: data.updateTag,
-    removeTag: data.removeTag,
-    addCard: local.addCard,
-    updateCard: local.updateCard,
-    removeCard: local.removeCard,
     createInstallmentPlan: local.createInstallmentPlan,
     updateInstallment: local.updateInstallment,
     payInstallment: local.payInstallment,

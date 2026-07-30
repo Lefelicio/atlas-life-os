@@ -8,6 +8,7 @@ import { Route as RecuperarSenhaRouteImport } from "./routes/recuperar-senha";
 import { Route as RedefinirSenhaRouteImport } from "./routes/redefinir-senha";
 import { Route as ShellIndexRouteImport } from "./routes/_shell.index";
 import { Route as ShellCartoesRouteImport } from "./routes/_shell.cartoes";
+import { Route as ShellFaturasRouteImport } from "./routes/_shell.faturas";
 import { Route as ShellConfiguracoesRouteImport } from "./routes/_shell.configuracoes";
 import { Route as ShellFinancasRouteImport } from "./routes/_shell.financas";
 import { Route as ShellMetasRouteImport } from "./routes/_shell.metas";
@@ -53,6 +54,11 @@ const ShellIndexRoute = ShellIndexRouteImport.update({
 const ShellCartoesRoute = ShellCartoesRouteImport.update({
   id: "/cartoes",
   path: "/cartoes",
+  getParentRoute: () => ShellRoute,
+} as any);
+const ShellFaturasRoute = ShellFaturasRouteImport.update({
+  id: "/faturas",
+  path: "/faturas",
   getParentRoute: () => ShellRoute,
 } as any);
 const ShellConfiguracoesRoute = ShellConfiguracoesRouteImport.update({
@@ -118,6 +124,7 @@ const ShellSobreRoute = ShellSobreRouteImport.update({
 
 interface ShellRouteChildren {
   ShellCartoesRoute: typeof ShellCartoesRoute;
+  ShellFaturasRoute: typeof ShellFaturasRoute;
   ShellConfiguracoesRoute: typeof ShellConfiguracoesRoute;
   ShellFinancasRoute: typeof ShellFinancasRoute;
   ShellMetasRoute: typeof ShellMetasRoute;
@@ -135,6 +142,7 @@ interface ShellRouteChildren {
 
 const ShellRouteChildren: ShellRouteChildren = {
   ShellCartoesRoute: ShellCartoesRoute,
+  ShellFaturasRoute: ShellFaturasRoute,
   ShellConfiguracoesRoute: ShellConfiguracoesRoute,
   ShellFinancasRoute: ShellFinancasRoute,
   ShellMetasRoute: ShellMetasRoute,
@@ -213,6 +221,13 @@ declare module "@tanstack/react-router" {
       path: "/cartoes";
       fullPath: "/cartoes";
       preLoaderRoute: typeof ShellCartoesRouteImport;
+      parentRoute: typeof ShellRoute;
+    };
+    "/_shell/faturas": {
+      id: "/_shell/faturas";
+      path: "/faturas";
+      fullPath: "/faturas";
+      preLoaderRoute: typeof ShellFaturasRouteImport;
       parentRoute: typeof ShellRoute;
     };
     "/_shell/configuracoes": {

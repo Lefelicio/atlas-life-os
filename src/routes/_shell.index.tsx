@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import {
   ArrowUpRight,
   ArrowRight,
@@ -26,6 +28,9 @@ import {
   sumExpense,
   sumIncome,
   totalBalance,
+  totalOpenFaturas,
+  totalAvailableLimit,
+  nextFaturaDueDate,
 } from "@/features/finance/utils";
 import { useGoals, goalProgress, goalRemaining } from "@/features/goals/store";
 import { TransactionsList } from "@/features/finance/components/transactions-list";
@@ -53,7 +58,7 @@ export const Route = createFileRoute("/_shell/")({
 });
 
 function DashboardPage() {
-  const { accounts, transactions, cards, categories, runRecurrences } = useFinance();
+  const { accounts, transactions, cards, categories, faturas, runRecurrences } = useFinance();
   const { goals } = useGoals();
   const { config, categoryMappings } = usePlanning();
   const { objectives } = useObjetivos();
@@ -76,6 +81,11 @@ function DashboardPage() {
   // Balance
   const total = totalBalance(accounts, transactions);
   const hasAccounts = accounts.length > 0;
+
+  // Credit card indicators
+  const openFaturasTotal = totalOpenFaturas(faturas);
+  const availableLimit = totalAvailableLimit(cards, transactions);
+  const nextDue = nextFaturaDueDate(cards, faturas);
 
   // Previous month comparison
   const prevMonthSavings = useMemo(() => {
@@ -198,7 +208,7 @@ function DashboardPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <Card className="border-border/40 bg-card/40">
           <CardContent className="p-4">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Saldo total</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Saldo disponível</p>
             <p className="mt-1.5 text-lg font-semibold tabular-nums">
               {hasAccounts ? currency(total) : "—"}
             </p>
@@ -206,25 +216,25 @@ function DashboardPage() {
         </Card>
         <Card className="border-border/40 bg-card/40">
           <CardContent className="p-4">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Receitas</p>
-            <p className="mt-1.5 text-lg font-semibold tabular-nums text-success">
-              {transactionsCount > 0 ? currency(sumIncome(monthly)) : "—"}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="border-border/40 bg-card/40">
-          <CardContent className="p-4">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Despesas</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Faturas em aberto</p>
             <p className="mt-1.5 text-lg font-semibold tabular-nums text-destructive">
-              {transactionsCount > 0 ? currency(sumExpense(monthly)) : "—"}
+              {openFaturasTotal > 0 ? currency(openFaturasTotal) : "—"}
             </p>
           </CardContent>
         </Card>
         <Card className="border-border/40 bg-card/40">
           <CardContent className="p-4">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Contas</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Limite disponível</p>
+            <p className="mt-1.5 text-lg font-semibold tabular-nums text-success">
+              {cards.length > 0 ? currency(availableLimit) : "—"}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/40 bg-card/40">
+          <CardContent className="p-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Próx. vencimento</p>
             <p className="mt-1.5 text-lg font-semibold tabular-nums">
-              {accountsCount}
+              {nextDue ? format(parseISO(nextDue.dueDate), "dd/MM", { locale: ptBR }) : "—"}
             </p>
           </CardContent>
         </Card>

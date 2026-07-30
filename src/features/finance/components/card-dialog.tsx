@@ -39,7 +39,7 @@ interface Props {
 }
 
 export function CardDialog({ open, onOpenChange, card }: Props) {
-  const { addCard, updateCard } = useFinance();
+  const { addCard, updateCard, accounts } = useFinance();
   const [name, setName] = useState("");
   const [bank, setBank] = useState("");
   const [brand, setBrand] = useState<CardBrand>("Visa");
@@ -49,6 +49,7 @@ export function CardDialog({ open, onOpenChange, card }: Props) {
   const [color, setColor] = useState(PALETTE[0]);
   const [active, setActive] = useState(true);
   const [notes, setNotes] = useState("");
+  const [accountId, setAccountId] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -61,10 +62,11 @@ export function CardDialog({ open, onOpenChange, card }: Props) {
       setColor(card?.color ?? PALETTE[Math.floor(Math.random() * PALETTE.length)]);
       setActive(card?.active ?? true);
       setNotes(card?.notes ?? "");
+      setAccountId(card?.accountId ?? accounts[0]?.id ?? "");
     }
-  }, [open, card]);
+  }, [open, card, accounts]);
 
-  const canSave = name.trim().length > 0;
+  const canSave = name.trim().length > 0 && !!accountId;
 
   const submit = () => {
     if (!canSave) return;
@@ -78,6 +80,7 @@ export function CardDialog({ open, onOpenChange, card }: Props) {
       color,
       active,
       notes: notes || undefined,
+      accountId,
     };
     if (card) updateCard(card.id, data);
     else addCard(data);
@@ -94,6 +97,20 @@ export function CardDialog({ open, onOpenChange, card }: Props) {
           <div className="col-span-2">
             <Label className="text-xs">Nome</Label>
             <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Nubank Ultravioleta" />
+          </div>
+          <div className="col-span-2">
+            <Label className="text-xs">Conta vinculada</Label>
+            <Select value={accountId} onValueChange={setAccountId}>
+              <SelectTrigger><SelectValue placeholder={accounts.length === 0 ? "Nenhuma conta" : "Selecionar"} /></SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {accounts.length === 0 && (
+              <p className="text-[11px] text-muted-foreground">Crie uma conta primeiro.</p>
+            )}
           </div>
           <div>
             <Label className="text-xs">Banco</Label>
