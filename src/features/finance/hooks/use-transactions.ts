@@ -7,8 +7,9 @@ import { supabase } from "@/lib/supabase";
 import { useActivity } from "@/features/activity/store";
 import type { Transaction, TxKind, PaymentMethod } from "../types";
 import { computeCompetenceMonth } from "../utils";
+import { FINANCE_KEYS, ALL_FINANCE_QUERY_KEYS } from "./query-keys";
 
-const KEY = "transactions";
+const KEY = FINANCE_KEYS.transactions;
 
 export interface TransactionRow {
   id: string;
@@ -78,13 +79,15 @@ export function useTransactions() {
 
   const create = useMutation({
     mutationFn: async (input: Omit<Transaction, "id" | "createdAt">) => {
-      // Auto-compute competence month for credit transactions
       const enriched = { ...input };
       if (input.paymentMethod === "credit" && input.cardId && !input.competenceMonth) {
-        // We need the card's closing day, but we don't have it here.
-        // The competence month will be set by the caller or computed later.
-        // For now, default to the transaction's month.
-        enriched.competenceMonth = input.date.slice(0, 7);
+        const { data: card } = await supabase
+          .from("cartoes")
+          .select("closing_day")
+          .eq("id", input.cardId)
+          .single();
+        const closingDay = (card as { closing_day: number } | null)?.closing_day ?? 1;
+        enriched.competenceMonth = computeCompetenceMonth(input.date, closingDay);
       }
       const { data, error } = await supabase
         .from("transacoes")
@@ -95,8 +98,7 @@ export function useTransactions() {
       return toTransaction(data as TransactionRow);
     },
     onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: [KEY] });
-      qc.invalidateQueries({ queryKey: ["faturas"] });
+      ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] }));
       useActivity.getState().log({
         type: "transaction",
         action:
@@ -129,8 +131,7 @@ export function useTransactions() {
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [KEY] });
-      qc.invalidateQueries({ queryKey: ["faturas"] });
+      ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] }));
     },
   });
 
@@ -140,8 +141,7 @@ export function useTransactions() {
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [KEY] });
-      qc.invalidateQueries({ queryKey: ["faturas"] });
+      ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] }));
     },
   });
 

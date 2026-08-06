@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,21 +48,30 @@ export function GoalDialog({ open, onOpenChange, goal }: Props) {
 
   const canSave = title.trim().length > 0 && Number(targetAmount) > 0;
 
-  const submit = () => {
+  const submit = async () => {
     if (!canSave) return;
-    const data = {
-      title: title.trim(),
-      description: description || undefined,
-      targetAmount: Number(targetAmount),
-      currentAmount: Number(currentAmount) || 0,
-      deadline: deadline || undefined,
-      color,
-      isPrimary,
-      archived: false,
-    };
-    if (goal) updateGoal(goal.id, data);
-    else addGoal(data);
-    onOpenChange(false);
+    try {
+      const data = {
+        title: title.trim(),
+        description: description || undefined,
+        targetAmount: Number(targetAmount),
+        currentAmount: Number(currentAmount) || 0,
+        deadline: deadline || undefined,
+        color,
+        isPrimary,
+        archived: false,
+      };
+      if (goal) {
+        await updateGoal(goal.id, data);
+        toast.success("Meta atualizada.");
+      } else {
+        await addGoal(data);
+        toast.success("Meta criada.");
+      }
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao salvar meta.");
+    }
   };
 
   return (
@@ -69,6 +80,7 @@ export function GoalDialog({ open, onOpenChange, goal }: Props) {
         <DialogHeader>
           <DialogTitle>{goal ? "Editar meta" : "Nova meta"}</DialogTitle>
         </DialogHeader>
+        <DialogBody>
         <div className="space-y-3">
           <div>
             <Label className="text-xs">Nome</Label>
@@ -142,6 +154,7 @@ export function GoalDialog({ open, onOpenChange, goal }: Props) {
             <Switch checked={isPrimary} onCheckedChange={setIsPrimary} />
           </div>
         </div>
+        </DialogBody>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar

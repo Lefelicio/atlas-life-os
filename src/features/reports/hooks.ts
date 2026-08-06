@@ -11,25 +11,28 @@ import { useGoals } from "@/features/goals/store";
 
 import { currency, sumIncome, sumExpense, inRange, computePeriod } from "@/features/finance/utils";
 import { monthEntries, sumEntries, yearEntries } from "@/features/patrimony/utils";
-import { computeGroupSummary, monthTransactions, healthMessages } from "@/features/planning/utils";
+import { computeGroupSummary, healthMessages } from "@/features/planning/utils";
 import { GROUP_ORDER, GROUP_LABELS } from "@/features/planning/types";
 import { ACTIVITY_LABELS, type WeightEntry } from "@/features/pessoal/types";
 import { KIND_LABELS } from "@/features/objetivos/types";
+import {
+  computeBalance,
+  computeDelta,
+  computeIMC,
+  computePlanningHealth,
+  monthRange,
+  prevMonthRange,
+  monthLabel,
+  monthlyFlowSeries,
+  topCategories,
+  monthTransactions,
+  objectiveProgressPct,
+  type MetricDelta,
+} from "@/features/finance/finance-rules";
+import { objectiveProgress } from "@/features/objetivos/resolver";
 
-export interface MetricDelta {
-  current: number;
-  previous: number;
-  delta: number;
-  deltaPct: number;
-  trend: "up" | "down" | "flat";
-}
-
-export function computeDelta(current: number, previous: number): MetricDelta {
-  const delta = current - previous;
-  const deltaPct = previous !== 0 ? (delta / Math.abs(previous)) * 100 : current > 0 ? 100 : 0;
-  const trend: MetricDelta["trend"] = Math.abs(delta) < 0.01 ? "flat" : delta > 0 ? "up" : "down";
-  return { current, previous, delta, deltaPct, trend };
-}
+// MetricDelta and computeDelta are now imported from finance-rules.ts
+export type { MetricDelta } from "@/features/finance/finance-rules";
 
 export interface ExecutiveSummary {
   income: number;
@@ -57,31 +60,22 @@ export function useExecutiveSummary(): ExecutiveSummary {
 
   return useMemo(() => {
     const now = new Date();
-    const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
-    const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
-    const range = { key: "custom" as const, from: monthStart, to: monthEnd };
-    const monthTx = transactions.filter((t) => inRange(t.date, range));
+    const range = monthRange(now);
+    const monthTx = monthTransactions(transactions, now);
 
     const income = sumIncome(monthTx);
     const expense = sumExpense(monthTx);
     const savings = income - expense;
-    const balance = accounts.reduce((s, a) => s + a.initialBalance, 0) + transactions.reduce((s, t) => s + (t.kind === "income" ? t.amount : t.kind === "expense" ? -t.amount : 0), 0);
+    const balance = computeBalance(accounts, transactions);
 
     const monthAssetEntries = monthEntries(entries, now);
     const investments = sumEntries(monthAssetEntries);
 
-    let planningHealth: string[] = [];
-    if (config.monthlyIncome > 0) {
-      const summaries = GROUP_ORDER.map((g) => computeGroupSummary(g, config, monthTx, categories, categoryMappings));
-      planningHealth = healthMessages(summaries);
-    }
+    const planningHealth = computePlanningHealth(config, monthTx, categories, categoryMappings).messages;
 
     const sortedWeights = [...weights].sort((a, b) => b.date.localeCompare(a.date));
     const weight = sortedWeights.length > 0 ? sortedWeights[0].weight : null;
-    let imc: number | null = null;
-    if (weight && profile.height) {
-      imc = weight / Math.pow(profile.height / 100, 2);
-    }
+    const imc = computeIMC(weight, profile.height);
 
     const workoutsThisMonth = workouts.filter((w) => inRange(w.date, range)).length;
 
@@ -129,54 +123,29 @@ export function useFinancialReport(): FinancialReport {
 
   return useMemo(() => {
     const now = new Date();
-    const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
-    const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
-    const range = { key: "custom" as const, from: monthStart, to: monthEnd };
+    const range = monthRange(now);
     const monthTx = transactions.filter((t) => inRange(t.date, range));
 
     const income = sumIncome(monthTx);
     const expense = sumExpense(monthTx);
     const savings = income - expense;
-    const balance = accounts.reduce((s, a) => s + a.initialBalance, 0) + transactions.reduce((s, t) => s + (t.kind === "income" ? t.amount : t.kind === "expense" ? -t.amount : 0), 0);
+    const balance = computeBalance(accounts, transactions);
     const investments = sumEntries(monthEntries(entries, now));
 
-    const prevDate = subMonths(now, 1);
-    const prevRange = { key: "custom" as const, from: format(startOfMonth(prevDate), "yyyy-MM-dd"), to: format(endOfMonth(prevDate), "yyyy-MM-dd") };
+    const prevRange = prevMonthRange(now);
     const prevTx = transactions.filter((t) => inRange(t.date, prevRange));
     const prevIncome = sumIncome(prevTx);
     const prevExpense = sumExpense(prevTx);
     const prevSavings = prevIncome - prevExpense;
 
-    const catMap = new Map<string, number>();
-    for (const t of monthTx) {
-      if (t.kind === "expense" && t.categoryId) {
-        catMap.set(t.categoryId, (catMap.get(t.categoryId) ?? 0) + t.amount);
-      }
-    }
-    const topCategories = Array.from(catMap.entries())
-      .map(([id, amount]) => {
-        const cat = categories.find((c) => c.id === id);
-        return { name: cat?.name ?? "Sem categoria", amount, pct: expense > 0 ? (amount / expense) * 100 : 0 };
-      })
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 6);
+    const topCats = topCategories(monthTx, categories);
 
     const groupSummaries = GROUP_ORDER.map((g) => {
       const s = computeGroupSummary(g, config, monthTx, categories, categoryMappings);
       return { group: g, label: GROUP_LABELS[g], budget: s.budget, spent: s.spent, percentage: s.percentage, status: s.status };
     });
 
-    const monthlyFlow: { month: string; income: number; expense: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = subMonths(now, i);
-      const mRange = { key: "custom" as const, from: format(startOfMonth(d), "yyyy-MM-dd"), to: format(endOfMonth(d), "yyyy-MM-dd") };
-      const mTx = transactions.filter((t) => inRange(t.date, mRange));
-      monthlyFlow.push({
-        month: format(d, "MMM", { locale: ptBR }),
-        income: sumIncome(mTx),
-        expense: sumExpense(mTx),
-      });
-    }
+    const monthlyFlow = monthlyFlowSeries(transactions, 6, now);
 
     return {
       income, expense, savings, balance, investments,
@@ -184,7 +153,7 @@ export function useFinancialReport(): FinancialReport {
       incomeDelta: computeDelta(income, prevIncome),
       expenseDelta: computeDelta(expense, prevExpense),
       savingsDelta: computeDelta(savings, prevSavings),
-      topCategories, groupSummaries, monthlyFlow,
+      topCategories: topCats, groupSummaries, monthlyFlow,
     };
   }, [accounts, transactions, categories, config, categoryMappings, entries]);
 }
@@ -217,25 +186,19 @@ export function usePersonalReport(): PersonalReport {
 
   return useMemo(() => {
     const now = new Date();
-    const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
-    const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
-    const range = { key: "custom" as const, from: monthStart, to: monthEnd };
+    const range = monthRange(now);
 
     const sortedWeights = [...weights].sort((a, b) => a.date.localeCompare(b.date));
     const currentWeight = sortedWeights.length > 0 ? sortedWeights[sortedWeights.length - 1].weight : null;
     const prevWeightEntry = sortedWeights.length > 1 ? sortedWeights[sortedWeights.length - 2] : null;
     const prevWeight = prevWeightEntry?.weight ?? null;
 
-    let imc: number | null = null;
-    if (currentWeight && profile.height) {
-      imc = currentWeight / Math.pow(profile.height / 100, 2);
-    }
+    const imc = computeIMC(currentWeight, profile.height);
 
     const monthWorkouts = workouts.filter((w) => inRange(w.date, range));
     const workoutsThisMonth = monthWorkouts.length;
 
-    const prevDate = subMonths(now, 1);
-    const prevRange = { key: "custom" as const, from: format(startOfMonth(prevDate), "yyyy-MM-dd"), to: format(endOfMonth(prevDate), "yyyy-MM-dd") };
+    const prevRange = prevMonthRange(now);
     const workoutsPrevMonth = workouts.filter((w) => inRange(w.date, prevRange)).length;
 
     const daysTrained = new Set(monthWorkouts.map((w) => w.date)).size;
@@ -286,16 +249,15 @@ function computeWeightEvolution(weights: WeightEntry[]): WeightEvolution {
   const monthly: { month: string; avg: number; gain: number }[] = [];
   for (let i = 5; i >= 0; i--) {
     const d = subMonths(now, i);
-    const mStart = format(startOfMonth(d), "yyyy-MM-dd");
-    const mEnd = format(endOfMonth(d), "yyyy-MM-dd");
-    const mWeights = sorted.filter((w) => w.date >= mStart && w.date <= mEnd);
+    const mRange = monthRange(d);
+    const mWeights = sorted.filter((w) => inRange(w.date, mRange));
     if (mWeights.length === 0) {
-      monthly.push({ month: format(d, "MMM", { locale: ptBR }), avg: 0, gain: 0 });
+      monthly.push({ month: monthLabel(d), avg: 0, gain: 0 });
       continue;
     }
     const avg = Math.round((mWeights.reduce((s, w) => s + w.weight, 0) / mWeights.length) * 10) / 10;
     const gain = Math.round((mWeights[mWeights.length - 1].weight - mWeights[0].weight) * 10) / 10;
-    monthly.push({ month: format(d, "MMM", { locale: ptBR }), avg, gain });
+    monthly.push({ month: monthLabel(d), avg, gain });
   }
   return { total: sorted.length, min, max, monthly };
 }
@@ -319,24 +281,11 @@ export function useObjectivesReport(): ObjectivesReport {
 
     const withProgress = objectives.filter((o) => o.status === "active");
     const avgProgress = withProgress.length > 0
-      ? Math.round(withProgress.reduce((s, o) => {
-          if (o.kind === "financeiro" && o.targetValue) return s + Math.min(100, (o.currentValue ?? 0) / o.targetValue * 100);
-          if (o.kind === "quantidade" && o.targetCount) return s + Math.min(100, (o.currentCount ?? 0) / o.targetCount * 100);
-          if (o.kind === "manual" && o.manualTarget) return s + Math.min(100, (o.manualCurrent ?? 0) / o.manualTarget * 100);
-          if (o.kind === "recorrente" && o.perPeriodTarget) return s + Math.min(100, (o.checkinDates?.length ?? 0) / o.perPeriodTarget * 100);
-          return s;
-        }, 0) / withProgress.length)
+      ? Math.round(withProgress.reduce((s, o) => s + objectiveProgressPct(o), 0) / withProgress.length)
       : 0;
 
     const closest = withProgress
-      .map((o) => {
-        let progress = 0;
-        if (o.kind === "financeiro" && o.targetValue) progress = Math.min(100, (o.currentValue ?? 0) / o.targetValue * 100);
-        else if (o.kind === "quantidade" && o.targetCount) progress = Math.min(100, (o.currentCount ?? 0) / o.targetCount * 100);
-        else if (o.kind === "manual" && o.manualTarget) progress = Math.min(100, (o.manualCurrent ?? 0) / o.manualTarget * 100);
-        else if (o.kind === "recorrente" && o.perPeriodTarget) progress = Math.min(100, (o.checkinDates?.length ?? 0) / o.perPeriodTarget * 100);
-        return { title: o.title, progress: Math.round(progress) };
-      })
+      .map((o) => ({ title: o.title, progress: objectiveProgressPct(o) }))
       .sort((a, b) => b.progress - a.progress)
       .slice(0, 5);
 
@@ -344,16 +293,14 @@ export function useObjectivesReport(): ObjectivesReport {
     const monthlyHistory: { month: string; completed: number; created: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const d = subMonths(now, i);
-      const mStart = format(startOfMonth(d), "yyyy-MM-dd");
-      const mEnd = format(endOfMonth(d), "yyyy-MM-dd");
-      const mRange = { key: "custom" as const, from: mStart, to: mEnd };
+      const mRange = monthRange(d);
       const created = objectives.filter((o) => inRange(o.createdAt.slice(0, 10), mRange)).length;
       const comp = objectives.filter((o) => {
         if (o.status !== "completed") return false;
         const lastEvent = o.timeline.find((e) => e.type === "completed");
         return lastEvent && inRange(lastEvent.date.slice(0, 10), mRange);
       }).length;
-      monthlyHistory.push({ month: format(d, "MMM", { locale: ptBR }), completed: comp, created });
+      monthlyHistory.push({ month: monthLabel(d), completed: comp, created });
     }
 
     return { active, completed, paused, avgProgress, closest, monthlyHistory };
@@ -409,9 +356,10 @@ export function useComparison(mode: "month" | "year" | "custom", custom?: { from
     let prevRange: { from: string; to: string };
 
     if (mode === "month") {
-      curRange = { from: format(startOfMonth(now), "yyyy-MM-dd"), to: format(endOfMonth(now), "yyyy-MM-dd") };
-      const prev = subMonths(now, 1);
-      prevRange = { from: format(startOfMonth(prev), "yyyy-MM-dd"), to: format(endOfMonth(prev), "yyyy-MM-dd") };
+      const mr = monthRange(now);
+      curRange = { from: mr.from, to: mr.to };
+      const pr = prevMonthRange(now);
+      prevRange = { from: pr.from, to: pr.to };
     } else if (mode === "year") {
       curRange = { from: format(startOfYear(now), "yyyy-MM-dd"), to: format(endOfYear(now), "yyyy-MM-dd") };
       const prevYear = now.getFullYear() - 1;

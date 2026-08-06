@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,25 +77,30 @@ export function RecurrenceDialog({ open, onOpenChange }: Props) {
     (kind === "transfer" ? toAccountId && toAccountId !== accountId : true) &&
     (paymentMethod === "credit" ? !!cardId : true);
 
-  const submit = () => {
+  const submit = async () => {
     if (!canSave) return;
-    addRecurrence({
-      kind,
-      description: description.trim(),
-      amount: Number(amount),
-      accountId,
-      toAccountId: kind === "transfer" ? toAccountId : undefined,
-      categoryId: kind === "transfer" ? undefined : categoryId || undefined,
-      frequency,
-      intervalDays: frequency === "custom" ? Number(intervalDays) || 30 : undefined,
-      firstDate,
-      endDate: endDate || undefined,
-      active: true,
-      paymentMethod: kind === "transfer" ? undefined : paymentMethod,
-      cardId: paymentMethod === "credit" && cardId ? cardId : undefined,
-    });
-    runRecurrences();
-    onOpenChange(false);
+    try {
+      await addRecurrence({
+        kind,
+        description: description.trim(),
+        amount: Number(amount),
+        accountId,
+        toAccountId: kind === "transfer" ? toAccountId : undefined,
+        categoryId: kind === "transfer" ? undefined : categoryId || undefined,
+        frequency,
+        intervalDays: frequency === "custom" ? Number(intervalDays) || 30 : undefined,
+        firstDate,
+        endDate: endDate || undefined,
+        active: true,
+        paymentMethod: kind === "transfer" ? undefined : paymentMethod,
+        cardId: paymentMethod === "credit" && cardId ? cardId : undefined,
+      });
+      await runRecurrences();
+      toast.success("Recorrência criada.");
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao criar recorrência.");
+    }
   };
 
   return (
@@ -103,6 +110,7 @@ export function RecurrenceDialog({ open, onOpenChange }: Props) {
           <DialogTitle>Nova recorrência</DialogTitle>
         </DialogHeader>
 
+        <DialogBody>
         <Tabs value={kind} onValueChange={(v) => setKind(v as typeof kind)}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="expense">Despesa</TabsTrigger>
@@ -204,6 +212,7 @@ export function RecurrenceDialog({ open, onOpenChange }: Props) {
             <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
           </div>
         </div>
+        </DialogBody>
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>

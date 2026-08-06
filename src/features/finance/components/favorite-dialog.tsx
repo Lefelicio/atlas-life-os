@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,20 +56,29 @@ export function FavoriteDialog({ open, onOpenChange, favorite }: Props) {
 
   const canSave = label.trim();
 
-  const submit = () => {
+  const submit = async () => {
     if (!canSave) return;
-    const data = {
-      label: label.trim(),
-      kind,
-      accountId: accountId || undefined,
-      toAccountId: kind === "transfer" ? toAccountId || undefined : undefined,
-      categoryId: kind === "transfer" ? undefined : categoryId || undefined,
-      amount: amount ? Number(amount) : undefined,
-      description: description || undefined,
-    };
-    if (favorite) updateFavorite(favorite.id, data);
-    else addFavorite(data);
-    onOpenChange(false);
+    try {
+      const data = {
+        label: label.trim(),
+        kind,
+        accountId: accountId || undefined,
+        toAccountId: kind === "transfer" ? toAccountId || undefined : undefined,
+        categoryId: kind === "transfer" ? undefined : categoryId || undefined,
+        amount: amount ? Number(amount) : undefined,
+        description: description || undefined,
+      };
+      if (favorite) {
+        await updateFavorite(favorite.id, data);
+        toast.success("Favorito atualizado.");
+      } else {
+        await addFavorite(data);
+        toast.success("Favorito adicionado.");
+      }
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao salvar favorito.");
+    }
   };
 
   return (
@@ -76,6 +87,7 @@ export function FavoriteDialog({ open, onOpenChange, favorite }: Props) {
         <DialogHeader>
           <DialogTitle>{favorite ? "Editar favorito" : "Novo favorito"}</DialogTitle>
         </DialogHeader>
+        <DialogBody>
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
             <Label className="text-xs">Nome do atalho</Label>
@@ -131,6 +143,7 @@ export function FavoriteDialog({ open, onOpenChange, favorite }: Props) {
             <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Opcional" />
           </div>
         </div>
+        </DialogBody>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={submit} disabled={!canSave}>Salvar</Button>

@@ -5,10 +5,11 @@ import { usePlanning } from "@/features/planning/store";
 import { useObjetivos } from "@/features/objetivos/hooks/use-objetivos";
 import { usePatrimony } from "@/features/patrimony/store";
 import { usePessoal } from "@/features/pessoal/store";
-import { computeGroupSummary, monthTransactions, healthMessages } from "@/features/planning/utils";
+import { computeGroupSummary, healthMessages } from "@/features/planning/utils";
 import { GROUP_ORDER } from "@/features/planning/types";
 import { monthEntries, sumEntries } from "@/features/patrimony/utils";
 import { todayISO } from "@/features/finance/utils";
+import { monthTransactions } from "@/features/finance/finance-rules";
 
 export interface SmartMessage {
   id: string;

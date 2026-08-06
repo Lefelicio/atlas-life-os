@@ -22,8 +22,7 @@ export function useFinance() {
     if (newTx.length === 0) return;
 
     for (const t of newTx) {
-      const { toAccountId, tagIds, installmentPlanId, recurrenceId, createdAt, ...rest } = t;
-      await tx.create(rest);
+      await tx.create(t);
     }
 
     for (const [id, lastRun] of Object.entries(updates)) {

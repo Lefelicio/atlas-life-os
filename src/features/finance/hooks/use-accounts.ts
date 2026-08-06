@@ -5,8 +5,9 @@ import {
 } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Account } from "../types";
+import { FINANCE_KEYS, ALL_FINANCE_QUERY_KEYS } from "./query-keys";
 
-const KEY = "accounts";
+const KEY = FINANCE_KEYS.accounts;
 
 export interface AccountRow {
   id: string;
@@ -61,7 +62,7 @@ export function useAccounts() {
       if (error) throw error;
       return toAccount(data as AccountRow);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+    onSuccess: () => ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] })),
   });
 
   const update = useMutation({
@@ -73,7 +74,7 @@ export function useAccounts() {
       const { error } = await supabase.from("contas").update(patch).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+    onSuccess: () => ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] })),
   });
 
   const remove = useMutation({
@@ -82,8 +83,7 @@ export function useAccounts() {
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [KEY] });
-      qc.invalidateQueries({ queryKey: ["transactions"] });
+      ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] }));
     },
   });
 

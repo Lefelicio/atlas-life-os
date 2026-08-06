@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -176,6 +177,7 @@ export function AccountDialog({ open, onOpenChange, account }: Props) {
           <DialogHeader>
             <DialogTitle>{account ? "Editar conta" : "Nova conta"}</DialogTitle>
           </DialogHeader>
+          <DialogBody>
           <div className="space-y-3">
             <div>
               <Label className="text-xs">Nome</Label>
@@ -262,6 +264,7 @@ export function AccountDialog({ open, onOpenChange, account }: Props) {
               </div>
             )}
           </div>
+          </DialogBody>
           <DialogFooter>
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button onClick={submit} disabled={!canSave || saving}>
@@ -277,6 +280,7 @@ export function AccountDialog({ open, onOpenChange, account }: Props) {
           <DialogHeader>
             <DialogTitle>{editingCard ? "Editar cartão" : "Novo cartão"}</DialogTitle>
           </DialogHeader>
+          <DialogBody>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <Label className="text-xs">Nome</Label>
@@ -337,6 +341,7 @@ export function AccountDialog({ open, onOpenChange, account }: Props) {
               <Textarea rows={2} value={cardNotes} onChange={(e) => setCardNotes(e.target.value)} />
             </div>
           </div>
+          </DialogBody>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCardOpen(false)}>Cancelar</Button>
             <Button onClick={saveCard} disabled={!cardName.trim() || cardSaving}>

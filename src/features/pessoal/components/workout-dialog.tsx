@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,18 +63,23 @@ export function WorkoutDialog({ open, onOpenChange, onAdd }: Props) {
     );
   };
 
-  const submit = () => {
-    const dur = duration ? Number(duration) : undefined;
-    onAdd({
-      date,
-      activity,
-      name: activity === "outro" ? name.trim() || undefined : undefined,
-      duration: dur,
-      muscleGroups: activity === "musculacao" && muscles.length > 0 ? muscles : undefined,
-      professor: activity === "jiu-jitsu" ? professor.trim() || undefined : undefined,
-      notes: notes.trim() || undefined,
-    });
-    onOpenChange(false);
+  const submit = async () => {
+    try {
+      const dur = duration ? Number(duration) : undefined;
+      await onAdd({
+        date,
+        activity,
+        name: activity === "outro" ? name.trim() || undefined : undefined,
+        duration: dur,
+        muscleGroups: activity === "musculacao" && muscles.length > 0 ? muscles : undefined,
+        professor: activity === "jiu-jitsu" ? professor.trim() || undefined : undefined,
+        notes: notes.trim() || undefined,
+      });
+      toast.success("Treino registrado.");
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao registrar treino.");
+    }
   };
 
   return (
@@ -81,6 +88,7 @@ export function WorkoutDialog({ open, onOpenChange, onAdd }: Props) {
         <DialogHeader>
           <DialogTitle>Novo treino</DialogTitle>
         </DialogHeader>
+        <DialogBody>
         <div className="space-y-4">
           <div>
             <Label className="text-xs">Data</Label>
@@ -148,6 +156,7 @@ export function WorkoutDialog({ open, onOpenChange, onAdd }: Props) {
             <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
         </div>
+        </DialogBody>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={submit}>Registrar</Button>

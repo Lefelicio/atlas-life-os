@@ -7,9 +7,9 @@ import {
   sumIncome,
   todayISO,
   currency,
-  currentMonthRange,
   inRange,
 } from "@/features/finance/utils";
+import { prevMonthRange } from "@/features/finance/finance-rules";
 import { goalRemaining, goalProgress } from "@/features/goals/store";
 
 interface Input {
@@ -91,18 +91,7 @@ export function useDashboardInsight({
     const income = sumIncome(monthly);
     const expense = sumExpense(monthly);
 
-    // Compare with previous month
-    const prevMonthRange = (() => {
-      const now = new Date();
-      const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-      return {
-        key: "custom" as const,
-        from: prev.toISOString().slice(0, 10),
-        to: prevEnd.toISOString().slice(0, 10),
-      };
-    })();
-    const prevMonthTx = transactions.filter((t) => inRange(t.date, prevMonthRange));
+    const prevMonthTx = transactions.filter((t) => inRange(t.date, prevMonthRange()));
     const prevExpense = sumExpense(prevMonthTx);
 
     if (income > 0 && expense <= income * 0.6) {

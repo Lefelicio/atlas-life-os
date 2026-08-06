@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -52,6 +53,7 @@ export function PlanningConfigDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Planejamento Financeiro</DialogTitle>
         </DialogHeader>
+        <DialogBody>
         <div className="space-y-5">
           <div className="space-y-2">
             <Label>Salário líquido mensal</Label>
@@ -104,8 +106,9 @@ export function PlanningConfigDialog({ open, onOpenChange }: Props) {
             </div>
           </div>
         </div>
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button onClick={handleSave} disabled={!valid}>

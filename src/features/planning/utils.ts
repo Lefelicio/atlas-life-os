@@ -1,7 +1,7 @@
 import type { BudgetConfig, BudgetGroup } from "./types";
 import { GROUP_ORDER, GROUP_LABELS } from "./types";
 import type { Category, Transaction } from "@/features/finance/types";
-import { currency, computePeriod, inRange } from "@/features/finance/utils";
+import { currency } from "@/features/finance/utils";
 
 export interface GroupSummary {
   group: BudgetGroup;
@@ -27,20 +27,6 @@ export function computeGroupSpending(
     .reduce((sum, t) => sum + t.amount, 0);
 }
 
-export function computeInvestmentContributions(
-  transactions: Transaction[],
-  categories: Category[],
-  categoryMappings: Record<string, BudgetGroup>,
-): number {
-  const investCategoryIds = categories
-    .filter((c) => categoryMappings[c.id] === "investimentos")
-    .map((c) => c.id);
-
-  return transactions
-    .filter((t) => t.kind === "expense" && t.categoryId && investCategoryIds.includes(t.categoryId))
-    .reduce((sum, t) => sum + t.amount, 0);
-}
-
 export function computeGroupSummary(
   group: BudgetGroup,
   config: BudgetConfig,
@@ -56,11 +42,6 @@ export function computeGroupSummary(
   if (percentage > 100) status = "over";
   else if (percentage >= 80) status = "warning";
   return { group, budget, spent, remaining, percentage, status };
-}
-
-export function monthTransactions(transactions: Transaction[]) {
-  const range = computePeriod("30d");
-  return transactions.filter((t) => inRange(t.date, range));
 }
 
 export function healthMessages(summaries: GroupSummary[]): string[] {

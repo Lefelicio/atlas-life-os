@@ -22,23 +22,26 @@ import { EmptyState } from "@/components/empty-state";
 
 import { useFinance } from "@/features/finance/hooks/use-finance";
 import {
-  computePeriod,
   currency,
   inRange,
-  sumExpense,
   sumIncome,
+  sumExpense,
   totalBalance,
   totalOpenFaturas,
   totalAvailableLimit,
   nextFaturaDueDate,
 } from "@/features/finance/utils";
+import {
+  monthTransactions,
+  prevMonthRange,
+} from "@/features/finance/finance-rules";
 import { useGoals, goalProgress, goalRemaining } from "@/features/goals/store";
 import { TransactionsList } from "@/features/finance/components/transactions-list";
 import { TransactionDialog } from "@/features/finance/components/transaction-dialog";
 import { useDashboardActions } from "@/features/insights/use-dashboard-actions";
 import { useSmartMessages } from "@/features/insights/use-smart-messages";
 import { usePlanning } from "@/features/planning/store";
-import { computeGroupSummary, monthTransactions, healthMessages } from "@/features/planning/utils";
+import { computeGroupSummary, healthMessages } from "@/features/planning/utils";
 import { GROUP_ORDER } from "@/features/planning/types";
 import { useObjetivos } from "@/features/objetivos/hooks/use-objetivos";
 import { usePatrimony } from "@/features/patrimony/store";
@@ -69,10 +72,9 @@ function DashboardPage() {
     runRecurrences();
   }, [runRecurrences]);
 
-  const range = useMemo(() => computePeriod("30d"), []);
   const monthly = useMemo(
-    () => transactions.filter((t) => inRange(t.date, range)),
-    [transactions, range],
+    () => monthTransactions(transactions),
+    [transactions],
   );
 
   const actions = useDashboardActions({ accounts, transactions, cards, goals });
@@ -87,17 +89,11 @@ function DashboardPage() {
   const availableLimit = totalAvailableLimit(cards, transactions);
   const nextDue = nextFaturaDueDate(cards, faturas);
 
-  // Previous month comparison
+  // Previous month comparison — uses central calendar-month range
   const prevMonthSavings = useMemo(() => {
-    const now = new Date();
-    const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-    const prevRange = {
-      key: "custom" as const,
-      from: prevStart.toISOString().slice(0, 10),
-      to: prevEnd.toISOString().slice(0, 10),
-    };
-    const prevTx = transactions.filter((t) => inRange(t.date, prevRange));
+    const prevTx = transactions.filter((t) =>
+      inRange(t.date, prevMonthRange()),
+    );
     return sumIncome(prevTx) - sumExpense(prevTx);
   }, [transactions]);
 

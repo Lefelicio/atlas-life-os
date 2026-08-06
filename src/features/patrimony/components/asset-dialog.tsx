@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -71,6 +72,7 @@ export function AssetDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Novo aporte</DialogTitle>
         </DialogHeader>
+        <DialogBody>
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Valor</Label>
@@ -126,8 +128,9 @@ export function AssetDialog({ open, onOpenChange }: Props) {
             />
           </div>
         </div>
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button onClick={handleSave}>Registrar</Button>

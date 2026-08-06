@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_shell/cartoes")({
 });
 
 function CartoesPage() {
-  const { cards, plans, installments, removeCard } = useFinance();
+  const { cards, plans, installments, transactions, removeCard } = useFinance();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<CardT | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
@@ -80,6 +80,7 @@ function CartoesPage() {
                   card={c}
                   installments={installments}
                   plans={plans}
+                  transactions={transactions}
                   onEdit={() => {
                     setEditing(c);
                     setOpen(true);

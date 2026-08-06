@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -52,17 +54,22 @@ export function InstallmentPlanDialog({ open, onOpenChange, defaultCardId }: Pro
   const per = total / n;
   const canSave = cardId && total > 0 && n > 0 && description.trim();
 
-  const submit = () => {
+  const submit = async () => {
     if (!canSave) return;
-    createInstallmentPlan({
-      cardId,
-      description: description.trim(),
-      categoryId: categoryId || undefined,
-      totalAmount: total,
-      installments: n,
-      firstDate,
-    });
-    onOpenChange(false);
+    try {
+      await createInstallmentPlan({
+        cardId,
+        description: description.trim(),
+        categoryId: categoryId || undefined,
+        totalAmount: total,
+        installments: n,
+        firstDate,
+      });
+      toast.success("Parcelamento criado.");
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao criar parcelamento.");
+    }
   };
 
   return (
@@ -71,6 +78,7 @@ export function InstallmentPlanDialog({ open, onOpenChange, defaultCardId }: Pro
         <DialogHeader>
           <DialogTitle>Nova compra parcelada</DialogTitle>
         </DialogHeader>
+        <DialogBody>
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
             <Label className="text-xs">Descrição</Label>
@@ -112,6 +120,8 @@ export function InstallmentPlanDialog({ open, onOpenChange, defaultCardId }: Pro
             </div>
           )}
         </div>
+        </DialogBody>
+
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={submit} disabled={!canSave}>Criar parcelamento</Button>

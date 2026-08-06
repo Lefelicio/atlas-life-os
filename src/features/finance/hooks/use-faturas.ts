@@ -12,8 +12,9 @@ import {
   computeFaturaDueDate,
   computeFaturaClosingDate,
 } from "../utils";
+import { FINANCE_KEYS, ALL_FINANCE_QUERY_KEYS } from "./query-keys";
 
-const KEY = "faturas";
+const KEY = FINANCE_KEYS.faturas;
 
 export interface FaturaRow {
   id: string;
@@ -116,8 +117,7 @@ export function useFaturas() {
       return fatura;
     },
     onSuccess: (fatura) => {
-      qc.invalidateQueries({ queryKey: [KEY] });
-      qc.invalidateQueries({ queryKey: ["transactions"] });
+      ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] }));
       useActivity.getState().log({
         type: "transaction",
         action: "Fatura paga",
@@ -161,7 +161,7 @@ export function useFaturas() {
       if (error) throw error;
       return toFatura(data as FaturaRow);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+    onSuccess: () => ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] })),
   });
 
   return {

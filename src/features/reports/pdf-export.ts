@@ -349,22 +349,19 @@ function fmtDateTimeBR(iso: string): string {
  */
 export async function exportPdfReport(): Promise<void> {
   const data = await gatherReportData();
-
   const html = buildReportHtml(data);
-  const blob = new Blob([html], { type: "text/html" });
-  const url = URL.createObjectURL(blob);
-  const win = window.open(url, "_blank");
-  if (!win) {
-    URL.revokeObjectURL(url);
+
+  const printWin = window.open("", "_blank");
+  if (!printWin) {
     throw new Error("Não foi possível abrir a janela de impressão. Verifique o bloqueador de pop-ups.");
   }
-  // Wait for content to load, then trigger print
-  win.onload = () => {
-    setTimeout(() => {
-      win.print();
-      URL.revokeObjectURL(url);
-    }, 500);
-  };
+  printWin.document.open();
+  printWin.document.write(html);
+  printWin.document.close();
+  setTimeout(() => {
+    printWin.focus();
+    printWin.print();
+  }, 500);
 }
 
 function buildReportHtml(data: PdfReportData): string {

@@ -5,8 +5,9 @@ import {
 } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Card, CardBrand } from "../types";
+import { FINANCE_KEYS, ALL_FINANCE_QUERY_KEYS } from "./query-keys";
 
-const KEY = "cards";
+const KEY = FINANCE_KEYS.cards;
 
 export interface CardRow {
   id: string;
@@ -76,7 +77,7 @@ export function useCards() {
       if (error) throw error;
       return toCard(data as CardRow);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+    onSuccess: () => ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] })),
   });
 
   const update = useMutation({
@@ -95,7 +96,7 @@ export function useCards() {
       const { error } = await supabase.from("cartoes").update(patch).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+    onSuccess: () => ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] })),
   });
 
   const remove = useMutation({
@@ -104,8 +105,7 @@ export function useCards() {
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [KEY] });
-      qc.invalidateQueries({ queryKey: ["faturas"] });
+      ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] }));
     },
   });
 

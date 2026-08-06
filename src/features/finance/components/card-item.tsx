@@ -2,19 +2,20 @@ import { CreditCard, Pencil, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { Card as CardT, Installment, InstallmentPlan } from "../types";
+import type { Card as CardT, Installment, InstallmentPlan, Transaction } from "../types";
 import { cardUsage, currency } from "../utils";
 
 interface Props {
   card: CardT;
   installments: Installment[];
   plans: InstallmentPlan[];
+  transactions?: Transaction[];
   onEdit: () => void;
   onDelete: () => void;
 }
 
-export function CardItem({ card, installments, plans, onEdit, onDelete }: Props) {
-  const { used, available } = cardUsage(card, installments, plans);
+export function CardItem({ card, installments, plans, transactions, onEdit, onDelete }: Props) {
+  const { used, available } = cardUsage(card, installments, plans, transactions);
   const pct = card.limit > 0 ? Math.min(100, (used / card.limit) * 100) : 0;
 
   return (

@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -68,23 +70,32 @@ export function CardDialog({ open, onOpenChange, card }: Props) {
 
   const canSave = name.trim().length > 0 && !!accountId;
 
-  const submit = () => {
+  const submit = async () => {
     if (!canSave) return;
-    const data = {
-      name: name.trim(),
-      bank: bank.trim(),
-      brand,
-      limit: Number(limit) || 0,
-      closingDay: Math.min(31, Math.max(1, Number(closingDay) || 1)),
-      dueDay: Math.min(31, Math.max(1, Number(dueDay) || 1)),
-      color,
-      active,
-      notes: notes || undefined,
-      accountId,
-    };
-    if (card) updateCard(card.id, data);
-    else addCard(data);
-    onOpenChange(false);
+    try {
+      const data = {
+        name: name.trim(),
+        bank: bank.trim(),
+        brand,
+        limit: Number(limit) || 0,
+        closingDay: Math.min(31, Math.max(1, Number(closingDay) || 1)),
+        dueDay: Math.min(31, Math.max(1, Number(dueDay) || 1)),
+        color,
+        active,
+        notes: notes || undefined,
+        accountId,
+      };
+      if (card) {
+        await updateCard(card.id, data);
+        toast.success("Cartão atualizado.");
+      } else {
+        await addCard(data);
+        toast.success("Cartão adicionado.");
+      }
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao salvar cartão.");
+    }
   };
 
   return (
@@ -93,6 +104,7 @@ export function CardDialog({ open, onOpenChange, card }: Props) {
         <DialogHeader>
           <DialogTitle>{card ? "Editar cartão" : "Novo cartão"}</DialogTitle>
         </DialogHeader>
+        <DialogBody>
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
             <Label className="text-xs">Nome</Label>
@@ -167,6 +179,7 @@ export function CardDialog({ open, onOpenChange, card }: Props) {
             <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
         </div>
+        </DialogBody>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={submit} disabled={!canSave}>Salvar</Button>

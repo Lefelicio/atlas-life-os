@@ -3,6 +3,8 @@ import { Sparkles, Zap } from "lucide-react";
 import {
   Dialog,
   DialogContent,
+  DialogBody,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -92,6 +94,7 @@ export function QuickAdd({ open, onOpenChange }: Props) {
             Quick Add
           </DialogTitle>
         </DialogHeader>
+        <DialogBody>
         <div className="space-y-3">
           <Input
             autoFocus
@@ -144,16 +147,14 @@ export function QuickAdd({ open, onOpenChange }: Props) {
             </p>
           )}
 
-          <div className="flex justify-end">
-            <Button onClick={submit} disabled={!canSave}>
-              <Zap className="h-4 w-4" /> Lançar
-            </Button>
-          </div>
-
-          <p className="text-[10px] text-muted-foreground">
-            O interpretador de linguagem natural está preparado para receber IA (Lovable AI Gateway) e enriquecer sugestões futuras.
-          </p>
         </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={submit} disabled={!canSave}>
+            <Zap className="h-4 w-4" /> Lançar
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

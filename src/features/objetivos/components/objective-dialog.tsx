@@ -2,10 +2,12 @@ import { useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -117,9 +119,10 @@ export function ObjectiveDialog({ open, onOpenChange, onCreate }: Props) {
     setStep("form");
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!title.trim() || !kind) return;
-    const input: ObjectiveInput = {
+    try {
+      const input: ObjectiveInput = {
       title: title.trim(),
       description: description.trim() || undefined,
       category,
@@ -160,6 +163,10 @@ export function ObjectiveDialog({ open, onOpenChange, onCreate }: Props) {
     onCreate(input);
     reset();
     onOpenChange(false);
+    toast.success("Objetivo criado.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao criar objetivo.");
+    }
   };
 
   const handleClose = (o: boolean) => {
@@ -175,6 +182,7 @@ export function ObjectiveDialog({ open, onOpenChange, onCreate }: Props) {
             <DialogHeader>
               <DialogTitle>Qual tipo de objetivo deseja criar?</DialogTitle>
             </DialogHeader>
+            <DialogBody>
             <div className="space-y-2">
               {KIND_ORDER.map((k) => (
                 <button
@@ -210,6 +218,7 @@ export function ObjectiveDialog({ open, onOpenChange, onCreate }: Props) {
                 ))}
               </div>
             </div>
+            </DialogBody>
           </>
         )}
 
@@ -226,6 +235,7 @@ export function ObjectiveDialog({ open, onOpenChange, onCreate }: Props) {
                 Novo objetivo · {KIND_LABELS[kind]}
               </DialogTitle>
             </DialogHeader>
+            <DialogBody>
             <div className="space-y-4">
               <div>
                 <Label className="text-xs">Título</Label>
@@ -393,6 +403,7 @@ export function ObjectiveDialog({ open, onOpenChange, onCreate }: Props) {
                 </div>
               )}
             </div>
+            </DialogBody>
             <DialogFooter>
               <Button variant="ghost" onClick={() => handleClose(false)}>
                 Cancelar

@@ -115,7 +115,7 @@ export function ObjectiveDetail({ objective, onClose, onSetStatus, onRemove }: P
             </div>
           </div>
         </DialogHeader>
-
+        <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="space-y-5">
           {objective.description && (
             <p className="text-sm text-muted-foreground">{objective.description}</p>
@@ -256,6 +256,7 @@ export function ObjectiveDetail({ objective, onClose, onSetStatus, onRemove }: P
               <Trash2 className="h-3.5 w-3.5" /> Excluir
             </Button>
           </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

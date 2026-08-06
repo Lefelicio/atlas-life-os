@@ -52,6 +52,8 @@ import {
   useReportInsights,
   type MetricDelta,
 } from "@/features/reports/hooks";
+import { exportExcelReport } from "@/features/reports/excel-export";
+import { exportPdfReport } from "@/features/reports/pdf-export";
 import { exportReport, type ExportFormat } from "@/features/reports/export";
 import { MONTHLY_REPORT_STATUS } from "@/features/reports/monthly";
 import { triggerHelpOpen } from "@/features/help/help-events";
@@ -713,19 +715,39 @@ function ExportDialog({ open, onOpenChange, tab }: { open: boolean; onOpenChange
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
-  const handleExport = () => {
-    const now = new Date();
-    const period = {
-      from: from || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10),
-      to: to || now.toISOString().slice(0, 10),
-    };
-    const modules = [TABS.find((t) => t.key === tab)?.label ?? "Relatório"];
-    const title = `Relatório ${modules[0]}`;
-    const headers = ["Indicador", "Valor"];
-    const rows: (string | number)[][] = [["Período", `${period.from} a ${period.from}`], ["Gerado em", new Date().toLocaleString("pt-BR")]];
-    exportReport(title, headers, rows, { format, period, modules });
-    toast.success("Relatório exportado com sucesso.");
-    onOpenChange(false);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      if (format === "excel") {
+        await exportExcelReport();
+        toast.success("Planilha Excel (.xlsx) exportada com sucesso.");
+        onOpenChange(false);
+      } else if (format === "pdf") {
+        await exportPdfReport();
+        toast.success("Relatório PDF gerado. Use a janela de impressão para salvar como PDF.");
+        onOpenChange(false);
+      } else {
+        const now = new Date();
+        const period = {
+          from: from || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10),
+          to: to || now.toISOString().slice(0, 10),
+        };
+        const modules = [TABS.find((t) => t.key === tab)?.label ?? "Relatório"];
+        const title = `Relatório ${modules[0]}`;
+        const headers = ["Indicador", "Valor"];
+        const rows: (string | number)[][] = [["Período", `${period.from} a ${period.to}`], ["Gerado em", new Date().toLocaleString("pt-BR")]];
+        exportReport(title, headers, rows, { format, period, modules });
+        toast.success("Relatório CSV exportado com sucesso.");
+        onOpenChange(false);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao exportar relatório.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -734,6 +756,7 @@ function ExportDialog({ open, onOpenChange, tab }: { open: boolean; onOpenChange
         <DialogHeader>
           <DialogTitle>Exportar Relatório</DialogTitle>
         </DialogHeader>
+        <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="space-y-4">
           <div>
             <Label className="text-sm">Formato</Label>
@@ -743,7 +766,7 @@ function ExportDialog({ open, onOpenChange, tab }: { open: boolean; onOpenChange
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="csv">CSV</SelectItem>
-                <SelectItem value="excel">Excel</SelectItem>
+                <SelectItem value="excel">Excel (.xlsx)</SelectItem>
                 <SelectItem value="pdf">PDF</SelectItem>
               </SelectContent>
             </Select>
@@ -762,9 +785,10 @@ function ExportDialog({ open, onOpenChange, tab }: { open: boolean; onOpenChange
             Módulo: {TABS.find((t) => t.key === tab)?.label}
           </p>
         </div>
+        </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleExport} className="gap-2">
+          <Button onClick={handleExport} disabled={exporting} className="gap-2">
             <Download className="h-4 w-4" />
             Exportar
           </Button>

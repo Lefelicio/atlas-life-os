@@ -5,8 +5,9 @@ import {
 } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Tag } from "@/features/finance/types";
+import { FINANCE_KEYS, ALL_FINANCE_QUERY_KEYS } from "./query-keys";
 
-const KEY = "tags";
+const KEY = FINANCE_KEYS.tags;
 
 export interface TagRow {
   id: string;
@@ -43,7 +44,7 @@ export function useTags() {
       if (error) throw error;
       return toTag(data as TagRow);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+    onSuccess: () => ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] })),
   });
 
   const update = useMutation({
@@ -54,7 +55,7 @@ export function useTags() {
       const { error } = await supabase.from("tags").update(patch).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+    onSuccess: () => ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] })),
   });
 
   const remove = useMutation({
@@ -62,7 +63,7 @@ export function useTags() {
       const { error } = await supabase.from("tags").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+    onSuccess: () => ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] })),
   });
 
   return {

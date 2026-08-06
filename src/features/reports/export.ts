@@ -1,3 +1,5 @@
+import * as XLSX from "xlsx";
+
 export type ExportFormat = "csv" | "excel" | "pdf";
 
 export interface ExportOptions {
@@ -43,23 +45,15 @@ export function exportExcel(
   title: string,
   headers: string[],
   rows: (string | number)[][],
-  options: ExportOptions,
+  _options: ExportOptions,
 ) {
-  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-<head><meta charset="utf-8"></head>
-<body>
-<table>
-<tr><th colspan="${headers.length}" style="font-weight:bold;font-size:14px;background:#f0f0f0">Atlas - ${title}</th></tr>
-<tr><td colspan="${headers.length}">Período: ${options.period.from} a ${options.period.to}</td></tr>
-<tr><td colspan="${headers.length}">Módulos: ${options.modules.join(", ")}</td></tr>
-<tr></tr>
-<tr>${headers.map((h) => `<th style="font-weight:bold;background:#f5f5f5;border:1px solid #ddd">${h}</th>`).join("")}</tr>
-${rows.map((r) => `<tr>${r.map((c) => `<td style="border:1px solid #ddd">${c}</td>`).join("")}</tr>`).join("\n")}
-</table>
-</body>
-</html>`;
+  const data: (string | number)[][] = [headers, ...rows];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws["!cols"] = headers.map((h) => ({ wch: Math.max(h.length + 2, 12) }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Relatório");
   const date = new Date().toISOString().slice(0, 10);
-  downloadBlob(html, `atlas-${title.toLowerCase().replace(/\s+/g, "-")}-${date}.xls`, "application/vnd.ms-excel");
+  XLSX.writeFile(wb, `atlas-${title.toLowerCase().replace(/\s+/g, "-")}-${date}.xlsx`);
 }
 
 export function exportPDF(

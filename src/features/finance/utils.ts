@@ -125,9 +125,21 @@ export const uid = () =>
 
 // ============ Cards ============
 
-export function cardUsage(card: Card, installments: Installment[], plans: { id: string; cardId: string }[]) {
-  const planIds = new Set(plans.filter((p) => p.cardId === card.id).map((p) => p.id));
-  const used = installments
+export function cardUsage(
+  card: Card,
+  _installments: Installment[],
+  _plans: { id: string; cardId: string }[],
+  transactions?: Transaction[],
+): { used: number; available: number } {
+  if (transactions) {
+    const used = transactions
+      .filter((t) => t.paymentMethod === "credit" && t.cardId === card.id && t.kind === "expense" && !t.faturaId)
+      .reduce((s, t) => s + t.amount, 0);
+    return { used, available: Math.max(0, card.limit - used) };
+  }
+  // Fallback to installment-based calculation (legacy, kept for backward compat)
+  const planIds = new Set(_plans.filter((p) => p.cardId === card.id).map((p) => p.id));
+  const used = _installments
     .filter((i) => planIds.has(i.planId) && i.status !== "canceled" && i.status !== "paid")
     .reduce((s, i) => s + i.amount, 0);
   return { used, available: Math.max(0, card.limit - used) };
@@ -366,7 +378,7 @@ export function computeCompetenceMonth(date: string, closingDay: number): string
  */
 export function computeFaturaDueDate(competenceMonth: string, dueDay: number): string {
   const [year, month] = competenceMonth.split("-").map(Number);
-  const d = new Date(year, month, dueDay);
+  const d = new Date(year, month - 1, dueDay);
   return format(d, "yyyy-MM-dd");
 }
 

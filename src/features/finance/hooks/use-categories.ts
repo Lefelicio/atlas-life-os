@@ -5,8 +5,9 @@ import {
 } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Category } from "../types";
+import { FINANCE_KEYS, ALL_FINANCE_QUERY_KEYS } from "./query-keys";
 
-const KEY = "categories";
+const KEY = FINANCE_KEYS.categories;
 
 export interface CategoryRow {
   id: string;
@@ -49,7 +50,7 @@ export function useCategories() {
       if (error) throw error;
       return toCategory(data as CategoryRow);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+    onSuccess: () => ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] })),
   });
 
   const update = useMutation({
@@ -61,7 +62,7 @@ export function useCategories() {
       const { error } = await supabase.from("categorias").update(patch).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+    onSuccess: () => ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] })),
   });
 
   const remove = useMutation({
@@ -69,7 +70,7 @@ export function useCategories() {
       const { error } = await supabase.from("categorias").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+    onSuccess: () => ALL_FINANCE_QUERY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [...k] })),
   });
 
   return {
